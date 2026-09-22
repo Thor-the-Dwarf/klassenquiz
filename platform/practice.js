@@ -7,10 +7,10 @@ function practiceEffective(t){let i=Math.min(t.unlocked,practiceLevels.indexOf(P
 function drawPracticeSidebar(){
  const side=$('#sidebar');side.classList.toggle('practice-selecting',P.choosing);
  const topics=P.topics;for(const id of P.selection){const t=topics.find(t=>t.id===id);if(!t||!practiceEffective(t))P.selection.delete(id)}
- let html='<h2>Kurse</h2>';
+ let html=P.choosing?`<button data-practice-start ${P.selection.size?'':'disabled'}>Üben</button>`:`<button data-practice-select ${topics.length?'':'disabled'}>Üben</button>`;
  if(!P.courses.length){side.innerHTML=html+'<p class="muted">Noch keine Kurse freigegeben.</p>';return}
  html+='<details open><summary>LFPV-AP1</summary>';if(!topics.length){side.innerHTML=html+'<p class="muted">Noch keine Übungen freigegeben.</p></details>';return}
- html+=P.choosing?`<div class="practice-tools"><button data-practice-all>Alle</button><div class="row">${practiceLevels.map(level=>`<button data-practice-level="${level}" class="${P.difficulty===level?'active':'secondary'}" aria-pressed="${P.difficulty===level}">${level}</button>`).join('')}</div><button data-practice-start ${P.selection.size?'':'disabled'}>Üben</button></div>`:'<button data-practice-select>Üben</button>';
+ html+=P.choosing?`<div class="practice-tools"><button data-practice-all>Alle</button><div class="row">${practiceLevels.map(level=>`<button data-practice-level="${level}" class="${P.difficulty===level?'active':'secondary'}" aria-pressed="${P.difficulty===level}">${level}</button>`).join('')}</div></div>`:'';
  for(const [folder,items] of Map.groupBy(topics,t=>t.folder)){html+=`<details open><summary>${esc(folder)}</summary><div class="folder">`;for(const t of items){const effective=practiceEffective(t);html+=`<div class="treefile">${P.choosing?`<input type="checkbox" data-practice-topic="${esc(t.id)}" aria-label="${esc(t.label)} auswählen" ${P.selection.has(t.id)?'checked':''} ${effective?'':'disabled'}>`:''}<span>${esc(t.label)}${P.choosing?`<small class="practice-level">${effective?(effective===P.difficulty?effective:`${P.difficulty} → ${effective}`):'Keine passende Freigabe'}</small>`:''}</span></div>`}html+='</div></details>'}
  side.innerHTML=html+'</details>';
 }
