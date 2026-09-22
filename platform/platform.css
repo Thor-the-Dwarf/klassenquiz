@@ -4,3 +4,5 @@
 #identity:empty{display:none}
 
 .sidebar-materials{display:block;width:100%;margin:20px 0 12px;text-align:left}.sidebar-materials.active{border-color:var(--cyan)}
+
+header{align-items:center;gap:16px;flex-wrap:wrap}#header-start{min-width:0;max-width:100%}#header-start #class-select{width:280px;max-width:100%;margin:0}header #identity{margin-left:auto}@media(max-width:520px){#header-start{flex:1 1 100%}#header-start #class-select{width:100%}header #identity{margin-left:0}}
