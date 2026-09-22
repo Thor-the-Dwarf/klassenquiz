@@ -1,0 +1,11 @@
+{
+  "course": "PVAP1",
+  "source": "GFN/LFPV-AP1/PVAP1",
+  "folders": [
+    "BWL",
+    "IT",
+    "Mathematik",
+    "Software"
+  ],
+  "exerciseCatalog": "platform-pvap1-content.json"
+}
