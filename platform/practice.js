@@ -7,13 +7,13 @@ function practiceEffective(t){let i=Math.min(t.unlocked,practiceLevels.indexOf(P
 function drawPracticeSidebar(){
  const side=$('#sidebar');side.classList.toggle('practice-selecting',P.choosing);
  const topics=P.topics;for(const id of P.selection){const t=topics.find(t=>t.id===id);if(!t||!practiceEffective(t))P.selection.delete(id)}
- let html=P.choosing?`<button data-practice-start ${P.selection.size?'':'disabled'}>Üben</button>`:`<button data-practice-select ${topics.length?'':'disabled'}>Üben</button>`;
+ let html=`<button data-practice-select class="${P.choosing?'active':'secondary'}" aria-pressed="${P.choosing}" ${topics.length?'':'disabled'}>Üben</button>`;
  html='<div class="row practice-actions">'+html+`<button data-practice-knowledge class="${P.knowledge?'active':'secondary'}" aria-pressed="${P.knowledge}">Wissen</button></div>`;
  if(!P.courses.length){side.innerHTML=html+'<p class="muted">Noch keine Kurse freigegeben.</p>';return}
  html+='<details open><summary>LFPV-AP1</summary>';if(!topics.length){side.innerHTML=html+'<p class="muted">Noch keine Übungen freigegeben.</p></details>';return}
  html+=P.choosing?`<div class="practice-tools"><button data-practice-all>Alle</button><div class="row">${practiceLevels.map(level=>`<button data-practice-level="${level}" class="${P.difficulty===level?'active':'secondary'}" aria-pressed="${P.difficulty===level}">${level}</button>`).join('')}</div></div>`:'';
  for(const [folder,items] of Map.groupBy(topics,t=>t.folder)){html+=`<details open><summary>${esc(folder)}</summary><div class="folder">`;for(const t of items){const effective=practiceEffective(t);html+=`<div class="treefile">${P.choosing?`<input type="checkbox" data-practice-topic="${esc(t.id)}" aria-label="${esc(t.label)} auswählen" ${P.selection.has(t.id)?'checked':''} ${effective?'':'disabled'}>`:''}<span>${esc(t.label)}${P.choosing?`<small class="practice-level">${effective?(effective===P.difficulty?effective:`${P.difficulty} → ${effective}`):'Keine passende Freigabe'}</small>`:''}${P.knowledge?knowledgeBar(t):''}</span></div>`}html+='</div></details>'}
- side.innerHTML=html+'</details>';
+ side.innerHTML=html+'</details>'+(P.choosing?`<div class="practice-start"><button data-practice-start ${P.selection.size?'':'disabled'}>Start</button></div>`:'');
 }
 function knowledgeBar(t){
  const k=P.knowledgeData?.topics.find(x=>x.id===t.id);if(!k)return '<small class="practice-level">Wissensstand wird geladen …</small>';
@@ -25,7 +25,7 @@ async function refreshKnowledge(){
  const data=await request('knowledge');if(revision!==P.knowledgeRevision||auth!==session||!P.knowledge)return;
  P.knowledgeData=data;drawPracticeSidebar();
 }
-async function practiceSelect(){await flush();const data=await request('practiceTopics');P.topics=data.topics;P.courses=data.courses||[];P.choosing=true;drawSidebar()}
+async function practiceSelect(){if(P.choosing){P.choosing=false;drawSidebar();return}await flush();const data=await request('practiceTopics');P.topics=data.topics;P.courses=data.courses||[];P.choosing=true;drawSidebar()}
 function drawPracticeHome(){$('#content').innerHTML=`<h1>${esc(cls.name)}</h1><p>${boot.me.points.toLocaleString('de-DE')} Punkte</p>${P.active?'<button data-practice-resume>Übungsrunde fortsetzen</button>':''}`}
 function practiceCache(){if(P.round&&!storage.set(practiceKey(P.round.id),P.round))message('Der Zwischenstand konnte nicht lokal gespeichert werden. Bitte diese Seite geöffnet lassen.')}
 async function practiceOpen(id){P.round=storage.get(practiceKey(id));await flush();if(queue.length){if(!P.round)throw Error('Bitte zuerst die Verbindung wiederherstellen.')}else{P.round=await request('roundLoad',{round:id});practiceCache()}P.active=id;view='practice';drawTabs();drawPracticeRound()}
