@@ -27,7 +27,7 @@ async function refreshKnowledge(){
  P.knowledgeData=data;drawPracticeSidebar();
 }
 async function practiceSelect(){if(P.choosing){P.choosing=false;drawSidebar();return}await flush();const data=await request('practiceTopics');P.topics=data.topics;P.courses=data.courses||[];P.choosing=true;drawSidebar()}
-function drawPracticeHome(){$('#content').innerHTML=`<h1>${esc(cls.name)}</h1><p>${boot.me.points.toLocaleString('de-DE')} Punkte</p>${P.active?'<button data-practice-resume>Übungsrunde fortsetzen</button>':''}`}
+function drawPracticeHome(){$('#content').innerHTML=''}
 function practiceCache(){if(P.round&&!storage.set(practiceKey(P.round.id),P.round))message('Der Zwischenstand konnte nicht lokal gespeichert werden. Bitte diese Seite geöffnet lassen.')}
 async function practiceOpen(id){P.round=storage.get(practiceKey(id));await flush();if(queue.length){if(!P.round)throw Error('Bitte zuerst die Verbindung wiederherstellen.')}else{P.round=await request('roundLoad',{round:id});practiceCache()}P.active=id;view='practice';drawTabs();drawPracticeRound()}
 async function practiceStart(){await flush();if(queue.length)throw Error('Bitte erst die vorgemerkten Antworten speichern lassen.');if(!P.selection.size)return;const requestId=storage.get('lp-round-create-'+boot.me.id)||crypto.randomUUID();storage.set('lp-round-create-'+boot.me.id,requestId);try{P.round=await request('roundCreate',{topics:[...P.selection],difficulty:P.difficulty,requestId});storage.set('lp-round-create-'+boot.me.id,null)}catch(e){if(e.status&&e.status<500)storage.set('lp-round-create-'+boot.me.id,null);throw e}P.active=P.round.id;P.choosing=false;practiceCache();view='practice';drawSidebar();drawTabs();drawPracticeRound()}
