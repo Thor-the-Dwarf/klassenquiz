@@ -9,5 +9,7 @@ header{align-items:center;gap:16px;flex-wrap:wrap}#header-start{min-width:0;max-
 header #header-tabs{align-items:center;gap:8px;flex:1 1 auto}header #header-tabs button{white-space:nowrap}header #logout{margin-left:auto}@media(max-width:760px){header #header-tabs{order:3;flex-basis:100%}header #header-tabs button{white-space:normal}}
 .chart-row .bar span{background:#4dd487}
 #chart-mode{width:min(320px,100%);margin:0 0 24px}
+.course-grant input{display:inline-block;width:18px;margin:0 6px 0 0;vertical-align:middle}.treefile span{min-width:0;overflow-wrap:anywhere}
+.analysis-levels{margin-bottom:24px}.analysis-levels .active{border-color:var(--cyan)}
 .practice-selecting{background:rgba(87,47,132,.22)}.practice-tools{display:grid;gap:12px;margin:14px 0}.practice-tools .active{border-color:var(--cyan)}.practice-tools .row{gap:6px}.practice-tools .row button{padding:9px 12px}.practice-level{display:block}.practice-round{max-width:1100px}.practice-navigation{margin-top:24px}.practice-round .field{margin:16px 0}.practice-round h2{font-size:26px}
 .analysis-exercise{margin:0 0 36px}.analysis-exercise h2{overflow-wrap:anywhere}.analysis-split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:28px}.analysis-split>section{min-width:0}.analysis-split h3{font-size:16px;margin:0 0 18px}.analysis-split .chart-row{grid-template-columns:85px minmax(30px,1fr) 110px;gap:8px}@media(max-width:1100px){.analysis-split{grid-template-columns:1fr}}

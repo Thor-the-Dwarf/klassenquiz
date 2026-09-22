@@ -1,20 +1,20 @@
 'use strict';
-const P={topics:[],selection:new Set(),difficulty:'easy',choosing:false,round:null,active:null};
+const P={courses:[],topics:[],selection:new Set(),difficulty:'easy',choosing:false,round:null,active:null};
 const practiceLevels=['easy','normal','tough'];
 const practiceKey=id=>'lp-round-'+boot.me.id+'-'+id;
-async function practiceInit(){const data=await request('practiceTopics');P.topics=data.topics;P.active=data.active?.id||null;P.round=null;P.selection.clear();P.choosing=false}
+async function practiceInit(){const data=await request('practiceTopics');P.topics=data.topics;P.courses=data.courses||[];P.active=P.courses.length?(data.active?.id||null):null;P.round=null;P.selection.clear();P.choosing=false}
 function practiceEffective(t){let i=Math.min(t.unlocked,practiceLevels.indexOf(P.difficulty));while(i>=0&&!t.available.includes(practiceLevels[i]))i--;return i<0?null:practiceLevels[i]}
 function drawPracticeSidebar(){
  const side=$('#sidebar');side.classList.toggle('practice-selecting',P.choosing);
  const topics=P.topics;for(const id of P.selection){const t=topics.find(t=>t.id===id);if(!t||!practiceEffective(t))P.selection.delete(id)}
  let html='<h2>Kurse</h2>';
- if(!topics.length){side.innerHTML=html+'<p class="muted">Noch keine Kurse freigegeben.</p>';return}
- html+='<details open><summary>LFPV-AP1</summary>';
+ if(!P.courses.length){side.innerHTML=html+'<p class="muted">Noch keine Kurse freigegeben.</p>';return}
+ html+='<details open><summary>LFPV-AP1</summary>';if(!topics.length){side.innerHTML=html+'<p class="muted">Noch keine Übungen freigegeben.</p></details>';return}
  html+=P.choosing?`<div class="practice-tools"><button data-practice-all>Alle</button><div class="row">${practiceLevels.map(level=>`<button data-practice-level="${level}" class="${P.difficulty===level?'active':'secondary'}" aria-pressed="${P.difficulty===level}">${level}</button>`).join('')}</div><button data-practice-start ${P.selection.size?'':'disabled'}>Üben</button></div>`:'<button data-practice-select>Üben</button>';
  for(const [folder,items] of Map.groupBy(topics,t=>t.folder)){html+=`<details open><summary>${esc(folder)}</summary><div class="folder">`;for(const t of items){const effective=practiceEffective(t);html+=`<div class="treefile">${P.choosing?`<input type="checkbox" data-practice-topic="${esc(t.id)}" aria-label="${esc(t.label)} auswählen" ${P.selection.has(t.id)?'checked':''} ${effective?'':'disabled'}>`:''}<span>${esc(t.label)}${P.choosing?`<small class="practice-level">${effective?(effective===P.difficulty?effective:`${P.difficulty} → ${effective}`):'Keine passende Freigabe'}</small>`:''}</span></div>`}html+='</div></details>'}
  side.innerHTML=html+'</details>';
 }
-async function practiceSelect(){await flush();const data=await request('practiceTopics');P.topics=data.topics;P.choosing=true;drawSidebar()}
+async function practiceSelect(){await flush();const data=await request('practiceTopics');P.topics=data.topics;P.courses=data.courses||[];P.choosing=true;drawSidebar()}
 function drawPracticeHome(){$('#content').innerHTML=`<h1>${esc(cls.name)}</h1><p>${boot.me.points.toLocaleString('de-DE')} Punkte</p>${P.active?'<button data-practice-resume>Übungsrunde fortsetzen</button>':''}`}
 function practiceCache(){if(P.round&&!storage.set(practiceKey(P.round.id),P.round))message('Der Zwischenstand konnte nicht lokal gespeichert werden. Bitte diese Seite geöffnet lassen.')}
 async function practiceOpen(id){P.round=storage.get(practiceKey(id));await flush();if(queue.length){if(!P.round)throw Error('Bitte zuerst die Verbindung wiederherstellen.')}else{P.round=await request('roundLoad',{round:id});practiceCache()}P.active=id;view='practice';drawTabs();drawPracticeRound()}
@@ -22,7 +22,7 @@ async function practiceStart(){await flush();if(queue.length)throw Error('Bitte 
 function practiceSave(){const r=P.round;if(!r)return;const draft=r.draft||{};enqueue('roundSave',{round:r.id,position:r.position,draft,revision:r.revision++,requestId:crypto.randomUUID()});practiceCache()}
 function practiceAck(item,result){if(!['roundSave','roundAnswer'].includes(item.action)||!boot?.me)return;const r=P.round?.id===item.data.round?P.round:storage.get(practiceKey(item.data.round));if(!r)return;if(item.action==='roundAnswer'){const t=r.tasks[item.data.index];t.submission={answer:result.answer,score:result.score};t.solution=result.solution;t.explanation=result.explanation;delete t.pending;r.completed=r.tasks.every(t=>t.submission)?Date.now():null}storage.set(practiceKey(r.id),r);if(P.round===r&&view==='practice')drawPracticeRound()}
 function drawPracticeRound(){
- const r=P.round,el=$('#content');if(!r){el.innerHTML='<p>Wähle links deine Übungen aus.</p>';return}
+ const r=P.round,el=$('#content');if(!P.courses.includes('LFPV-AP1')){el.innerHTML='<p>Dieser Kurs ist derzeit nicht freigegeben.</p>';return}if(!r){el.innerHTML='<p>Wähle links deine Übungen aus.</p>';return}
  const t=r.tasks[r.position],draft=r.draft[t.key]||[],answer=t.submission?.answer||t.pending||draft,locked=!!(t.submission||t.pending),done=r.tasks.filter(t=>t.submission).length;
  let body=`<div class="row"><span>${esc(t.topic)} · ${esc(t.difficulty)}</span><span>Aufgabe ${r.position+1} / ${r.tasks.length}</span></div><h2>${esc(t.title)}</h2>${t.prompt?`<p>${esc(t.prompt)}</p>`:''}`;
  if(t.kind==='choice')body+=`${t.multi?'<p>Mehrere Antworten auswählen.</p>':''}<div class="answers">${t.choices.map(c=>`<button data-practice-choice="${esc(c.id)}" class="answer ${answer.includes(c.id)?'selected':''} ${t.solution?.includes(c.id)?'correct':''}" ${locked?'disabled':''}>${esc(c.label)}</button>`).join('')}</div>`;
@@ -36,7 +36,7 @@ document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)r
  if('practiceSelect'in d)return practiceSelect();if('practiceAll'in d){const items=P.topics.filter(practiceEffective),all=items.every(t=>P.selection.has(t.id));items.forEach(t=>all?P.selection.delete(t.id):P.selection.add(t.id));drawSidebar()}
  if(d.practiceLevel){P.difficulty=d.practiceLevel;drawSidebar()}
  if('practiceStart'in d)return practiceStart();if('practiceResume'in d)return practiceOpen(P.active);
- if('practiceNew'in d){const data=await request('practiceTopics');P.topics=data.topics;P.choosing=true;view='home';drawSidebar();drawTabs();drawPracticeHome()}
+ if('practiceNew'in d){const data=await request('practiceTopics');P.topics=data.topics;P.courses=data.courses||[];P.choosing=true;view='home';drawSidebar();drawTabs();drawPracticeHome()}
  const r=P.round;if(!r)return;const t=r.tasks[r.position];
  if('practiceChoice'in d&&!t.submission&&!t.pending){let answer=r.draft[t.key]||[];r.draft[t.key]=t.multi?(answer.includes(d.practiceChoice)?answer.filter(x=>x!==d.practiceChoice):[...answer,d.practiceChoice]):[d.practiceChoice];practiceSave();drawPracticeRound()}
  if('practiceAnswer'in d&&!t.submission&&!t.pending){const answer=r.draft[t.key]||[];if(!answer.length||t.kind!=='choice'&&(answer.length!==t.fields.length||answer.some(x=>!x))||t.kind==='order'&&new Set(answer).size!==answer.length)throw Error('Bitte alle Felder vollständig ausfüllen.');t.pending=[...answer];practiceCache();enqueue('roundAnswer',{round:r.id,index:r.position,answer});drawPracticeRound()}
