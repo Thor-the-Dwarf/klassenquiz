@@ -7,3 +7,4 @@
 
 header{align-items:center;gap:16px;flex-wrap:wrap}#header-start{min-width:0;max-width:100%}#header-start #class-select{width:280px;max-width:100%;margin:0}header #identity{margin-left:auto}@media(max-width:520px){#header-start{flex:1 1 100%}#header-start #class-select{width:100%}header #identity{margin-left:0}}
 header #header-tabs{align-items:center;gap:8px;flex:1 1 auto}header #header-tabs button{white-space:nowrap}header #logout{margin-left:auto}@media(max-width:760px){header #header-tabs{order:3;flex-basis:100%}header #header-tabs button{white-space:normal}}
+.chart-row .bar span{background:#4dd487}
