@@ -1,0 +1,13 @@
+'use strict';
+function richAnswer(t,a=[]){if(t.kind!=='matrix')return a;const out=[...a];t.rows.forEach((r,i)=>{if(t.fixedCriteria)out[i*5]=r.criterion;if(t.fixedWeights)out[i*5+1]=String(r.weight)});return out}
+function richComplete(t,a){if(t.kind==='why')return a.length>=2;if(t.kind==='trace')return a.length===t.fields.length&&a.every(v=>v!==undefined&&v.trim());if(t.kind==='matrix')return a.length===t.fields.length&&Array.from(a).every(v=>v!==undefined&&v!=='');return null}
+function richTask(t,a,locked,scope){
+ const attrs=i=>scope==='practice'?`data-practice-field="${i}"`:`data-answer-index="${i}"`,off=locked?'disabled':'';
+ if(t.kind==='why'){const d=t.decisions.find(d=>d.id===a[0]);return `<div class="answers">${t.decisions.map(d=>`<button data-rich-decision="${esc(d.id)}" data-rich-scope="${scope}" class="answer ${a[0]===d.id?'selected':''}" ${off}>${esc(d.label)}</button>`).join('')}</div>${d?`<p>${d.mode==='multi'?'Wähle die passenden Begründungen.':'Wähle die passende Begründung.'}</p><div class="answers">${d.reasons.map(id=>`<button data-rich-reason="${esc(id)}" data-rich-scope="${scope}" class="answer ${a.includes(id)?'selected':''}" ${off}>${esc(t.choices.find(c=>c.id===id).label)}</button>`).join('')}</div>`:''}`}
+ if(t.kind==='trace')return `<pre class="trace-code">${esc(t.code)}</pre>${t.fields.map((f,i)=>`<label class="field">${esc(f)}<input ${attrs(i)} inputmode="decimal" value="${esc(a[i]||'')}" ${off}></label>`).join('')}`;
+ if(t.kind==='matrix'){const select=(i,options)=>`<select ${attrs(i)} ${off}><option value="">Bitte auswählen</option>${options.map(v=>`<option value="${esc(v)}" ${String(a[i])===String(v)?'selected':''}>${esc(v)}</option>`).join('')}</select>`;return `<div class="matrix-scroll"><table><thead><tr><th>Kriterium</th><th>Gewichtung %</th>${t.offers.map(o=>`<th>${esc(o)}</th>`).join('')}</tr></thead><tbody>${t.rows.map((r,i)=>`<tr><th>${t.fixedCriteria?esc(r.criterion):select(i*5,t.criteria)}</th><td>${t.fixedWeights?r.weight:select(i*5+1,[10,20,30,40,50,60])}</td>${r.values.map((v,j)=>`<td>${esc(v)}${select(i*5+2+j,[1,2,3])}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`}
+ return null;
+}
+document.addEventListener('click',e=>{const b=e.target.closest('[data-rich-scope]');if(!b||b.disabled)return;const practice=b.dataset.richScope==='practice',t=practice?P.round.tasks[P.round.position]:quiz.question;let a=practice?(P.round.draft[t.key]||[]):quizDraft;if(b.dataset.richDecision)a=[b.dataset.richDecision];else{const d=t.decisions.find(d=>d.id===a[0]),id=b.dataset.richReason;a=d.mode==='multi'?(a.includes(id)?a.filter(v=>v!==id):[...a,id]):[a[0],id]}
+ if(practice){P.round.draft[t.key]=a;practiceSave();drawPracticeRound()}else{quizDraft=a;drawQuiz()}
+});

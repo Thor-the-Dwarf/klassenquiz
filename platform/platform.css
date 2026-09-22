@@ -24,3 +24,5 @@ header #learner-menu{margin-left:auto}header #learner-menu.active{border-color:v
 
 .presentation-view h1{flex:1}.slide-stage{display:flex;align-items:center;justify-content:center;min-height:220px;background:#080b14;border:1px solid var(--line);border-radius:12px;overflow:hidden;margin:16px 0}.slide-stage img{display:block;width:100%;height:auto;max-height:75vh;object-fit:contain}.slide-navigation{justify-content:center}.presentation-view{max-width:1500px}
 .presentation-view h1{overflow-wrap:anywhere}@media(max-width:600px){.presentation-view>.row h1{flex-basis:100%;margin-bottom:0}.presentation-view>.row{align-items:flex-start}.slide-stage{min-height:0}}
+
+.trace-code{white-space:pre-wrap;padding:16px;background:#111b2b;border:1px solid var(--line);border-radius:12px}.matrix-scroll{overflow:auto}.matrix-scroll table{min-width:640px}.matrix-scroll select{min-width:90px}.matrix-scroll th,.matrix-scroll td{text-align:left;vertical-align:top}
