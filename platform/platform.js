@@ -100,3 +100,6 @@ document.addEventListener('change',e=>{const el=e.target;guarded(async()=>{if(el
 setInterval(async()=>{flush();if(!boot||!cls||polling)return;polling=true;try{await refreshClass();await refreshRanking()}catch(e){if(e.status===401||e.status===403)message(e.message)}finally{polling=false}},3000);
 window.addEventListener('beforeunload',e=>{if(queue.length){e.preventDefault();e.returnValue=''}});window.addEventListener('online',flush);
 fetch('courses.json').then(r=>r.json()).then(c=>{courses=c;if(boot)drawSidebar()}).catch(()=>{});init();
+
+// Keep the navigation and sidebar below the actual, possibly wrapped app bar.
+new ResizeObserver(entries=>document.documentElement.style.setProperty('--appbar-height',entries[0].target.getBoundingClientRect().height+'px')).observe(document.querySelector('body>header'));
