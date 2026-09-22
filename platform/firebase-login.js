@@ -1,5 +1,5 @@
 import {initializeApp} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
-import {getAuth, GithubAuthProvider, signInWithPopup, setPersistence, browserLocalPersistence} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
+import {getAuth, GithubAuthProvider, signInWithPopup} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
 
 const app=initializeApp({
   apiKey:'AIzaSyDTcGhpCiH5DvgxBqEZslhFnpAf8ULqFwI',
@@ -9,7 +9,6 @@ const app=initializeApp({
 });
 const auth=getAuth(app);
 export async function githubToken(){
-  await setPersistence(auth,browserLocalPersistence);
   const result=await signInWithPopup(auth,new GithubAuthProvider());
   return result.user.getIdToken(true);
 }
