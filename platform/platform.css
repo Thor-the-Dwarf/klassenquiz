@@ -111,3 +111,5 @@ label.practice-topic{margin:0;cursor:pointer}label.practice-topic:has(input:disa
 .practice-start button small,.practice-resume-list button small{display:block;font-weight:400;white-space:normal}.practice-resume-list{display:grid;gap:8px}
 .learner-menu-dialog{color:var(--text);background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:24px;width:min(650px,95vw);max-height:85dvh;overflow:auto}.learner-menu-dialog::backdrop{background:#0008}.learner-menu-dialog>form:first-child{text-align:right}
 @media(max-width:760px){.learner-layout .shell.practice-browsing:has(.practice-round){grid-template-columns:minmax(0,1fr)}}
+
+.host-level{display:block;font-size:11px;color:var(--muted);font-weight:400}.treefile button:has(.host-level)::before{content:none}.course-grant{display:flex;align-items:center;gap:8px;margin:0}.course-grant input{width:18px;margin:0}
