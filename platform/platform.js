@@ -108,6 +108,6 @@ function learnerMenuMarkup(){return `<h1>Mein Menü</h1><button data-practice-kn
 function toggleLearnerMenu(){
  let dialog=$('#learner-menu-dialog');if(dialog?.open){dialog.close();return;}
  practiceCache();if(!dialog){dialog=document.createElement('dialog');dialog.id='learner-menu-dialog';dialog.className='learner-menu-dialog';document.body.append(dialog);dialog.addEventListener('close',()=>{$('#learner-menu').className='secondary';$('#learner-menu').setAttribute('aria-pressed','false');});}
- dialog.innerHTML='<form method="dialog"><button type="button" data-close-learner-menu aria-label="Menü schließen">Schließen</button></form>'+learnerMenuMarkup()+`<div class="practice-resume-list">${practiceResumeButtons()}</div>`;
+ dialog.innerHTML='<form method="dialog"><button type="button" data-close-learner-menu aria-label="Menü schließen">Schließen</button></form>'+learnerMenuMarkup();
  dialog.querySelector('[data-close-learner-menu]').onclick=()=>dialog.close();dialog.showModal();$('#learner-menu').className='active';$('#learner-menu').setAttribute('aria-pressed','true');
 }
