@@ -8,7 +8,7 @@ function drawPracticeSidebar(){
  const side=$('#sidebar');side.classList.toggle('practice-selecting',P.choosing);
  const topics=P.topics;for(const id of P.selection){const t=topics.find(t=>t.id===id);if(!t||!practiceEffective(t))P.selection.delete(id)}
  let html=`<button data-practice-select class="${P.choosing?'active':'secondary'}" aria-pressed="${P.choosing}" ${topics.length?'':'disabled'}>Üben</button>`;
- html='<div class="row practice-actions">'+html+`<button data-practice-knowledge class="${P.knowledge?'active':'secondary'}" aria-pressed="${P.knowledge}">Wissen</button></div>`;
+ html='<div class="row practice-actions">'+html+'</div>';
  if(!P.courses.length){side.innerHTML=html+'<p class="muted">Noch keine Kurse freigegeben.</p>';return}
  html+='<details open><summary>PVAP1</summary>';if(!topics.length&&!(boot.presentations||[]).length){side.innerHTML=html+['BWL','IT','Mathematik','Software'].map(folder=>`<details><summary>${folder}</summary><p class="muted">Noch keine Übungen freigegeben.</p></details>`).join('')+'</details>';return}
  html+=P.choosing?`<div class="practice-tools"><button data-practice-all>Alle</button><div class="row">${practiceLevels.map(level=>`<button data-practice-level="${level}" class="${P.difficulty===level?'active':'secondary'}" aria-pressed="${P.difficulty===level}">${level}</button>`).join('')}</div></div>`:'';
@@ -45,7 +45,7 @@ function drawPracticeRound(){
  el.innerHTML=`<section class="practice-round">${body}<div class="row practice-navigation"><button data-practice-prev class="secondary" ${r.position?'':'disabled'}>Zurück</button>${!locked?'<button data-practice-answer>Antwort prüfen</button>':''}<button data-practice-next ${locked&&next?'':'disabled'}>Weiter</button></div><p class="muted">${done} / ${r.tasks.length} Antworten gespeichert</p>${done===r.tasks.length?'<p class="saved">Übungsrunde abgeschlossen.</p><button data-practice-new>Neue Runde</button>':''}</section>`;
 }
 document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const d=b.dataset;if(!Object.keys(d).some(k=>k.startsWith('practice')))return;guarded(async()=>{
- if('practiceKnowledge'in d){P.knowledge=!P.knowledge;drawSidebar();if(P.knowledge)await refreshKnowledge();return}
+ if('practiceKnowledge'in d){P.knowledge=!P.knowledge;b.className=P.knowledge?'active':'secondary';b.setAttribute('aria-pressed',String(P.knowledge));drawSidebar();if(P.knowledge)await refreshKnowledge();return}
  if('practiceSelect'in d)return practiceSelect();if('practiceAll'in d){const items=P.topics.filter(practiceEffective),all=items.every(t=>P.selection.has(t.id));items.forEach(t=>all?P.selection.delete(t.id):P.selection.add(t.id));drawSidebar()}
  if(d.practiceLevel){P.difficulty=d.practiceLevel;drawSidebar()}
  if('practiceStart'in d)return practiceStart();if('practiceResume'in d)return practiceOpen(P.active);
