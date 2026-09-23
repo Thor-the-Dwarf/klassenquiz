@@ -25,19 +25,20 @@ async function openDiscussion(){
  await navigate('discussion');
 }
 async function drawDiscussion(){
- const state=discussion.state;
+ const owner=auth,classId=cls?.id,state=discussion.state;
  const key=cls?.id+':'+(state?state.id+':'+state.revision:'ended');
  if(discussion.renderKey===key)return;discussion.renderKey=key;
  const revision=++discussion.revision;
- if(discussion.url){URL.revokeObjectURL(discussion.url);discussion.url=null}
- if(!state){$('#content').innerHTML='<section class="panel"><p>Die Präsentation wurde beendet.</p><button data-leave-discussion>Zurück</button></section>';return}
+ const oldStage=$('#discussion-stage');
+ if(!state){if(discussion.url){URL.revokeObjectURL(discussion.url);discussion.url=null}$('#content').innerHTML='<section class="panel"><p>Die Präsentation wurde beendet.</p><button data-leave-discussion>Zurück</button></section>';return}
  const host=boot.role==='host';
  $('#content').innerHTML=`<section class="presentation-view discussion-view" aria-label="Gemeinsame Präsentation: ${esc(state.topic.title)}"><div class="slide-stage" id="discussion-stage" role="status">Folie wird geladen …</div><div class="row slide-navigation">${host?`<button data-discussion-step="-1" ${state.index?'':'disabled'}>Zurück</button>`:''}<span>Folie ${state.index+1} / ${state.topic.slides}</span>${host?`<button data-discussion-step="1" ${state.index<state.topic.slides-1?'':'disabled'}>Weiter</button><button data-end-discussion class="secondary">Präsentation beenden</button>`:'<button data-leave-discussion class="secondary">Diskussion verlassen</button>'}</div></section>`;
+ if(oldStage?.querySelector('img'))$('#discussion-stage').replaceWith(oldStage);$('#discussion-stage').setAttribute('aria-busy','true');
+ const valid=()=>revision===discussion.revision&&view==='discussion'&&owner===auth&&classId===cls?.id&&!!$('#discussion-stage');
  try{
  const blob=await materialBlob({action:'presentationLiveAsset',sessionId:state.id,slide:state.index});
- if(revision!==discussion.revision||view!=='discussion')return;
- discussion.url=URL.createObjectURL(blob);$('#discussion-stage').innerHTML=`<img src="${discussion.url}" alt="${esc(state.topic.title)} – Folie ${state.index+1}">`;
- }catch(e){if(revision===discussion.revision&&view==='discussion'){$('#discussion-stage').textContent=e.message;discussion.renderKey=null}}
+ if(!valid())return;const next=await decodedSlide(blob,state.topic.title+' – Folie '+(state.index+1));if(!valid()){URL.revokeObjectURL(next.url);return}const oldUrl=discussion.url;discussion.url=next.url;$('#discussion-stage').replaceChildren(next.img);$('#discussion-stage').setAttribute('aria-busy','false');if(oldUrl)URL.revokeObjectURL(oldUrl);void preloadSlides({action:'presentationLiveAsset',sessionId:state.id},state.index,state.topic.slides,valid);
+ }catch(e){if(valid()){$('#discussion-stage').setAttribute('aria-busy','false');$('#discussion-stage').textContent=e.message;discussion.renderKey=null}}
 }
 document.addEventListener('click',event=>{
  const b=event.target.closest('button');if(!b)return;const d=b.dataset;
