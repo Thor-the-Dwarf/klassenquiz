@@ -7,8 +7,8 @@ function practiceEffective(t){let i=Math.min(t.unlocked,practiceLevels.indexOf(P
 function drawPracticeSidebar(){
  const side=$('#sidebar');side.classList.toggle('practice-selecting',P.choosing);
  const topics=P.topics;for(const id of P.selection){const t=topics.find(t=>t.id===id);if(!t||!practiceEffective(t))P.selection.delete(id)}
- let html=`<button data-practice-select class="${P.choosing?'active':'secondary'}" aria-pressed="${P.choosing}" ${topics.length?'':'disabled'}>Üben</button>`;
- html='<div class="row practice-actions">'+html+'</div>';
+ const button=$('#learner-practice');button.className=P.choosing?'active':'secondary';button.setAttribute('aria-pressed',String(P.choosing));button.disabled=!topics.length;
+ let html='';
  if(!P.courses.length){side.innerHTML=html+'<p class="muted">Noch keine Kurse freigegeben.</p>';return}
  html+='<details open><summary>PVAP1</summary>';if(!topics.length&&!(boot.presentations||[]).length){side.innerHTML=html+['BWL','IT','Mathematik','Software'].map(folder=>`<details><summary>${folder}</summary><p class="muted">Noch keine Übungen freigegeben.</p></details>`).join('')+'</details>';return}
  html+=P.choosing?`<div class="practice-tools"><button data-practice-all>Alle</button><div class="row">${practiceLevels.map(level=>`<button data-practice-level="${level}" class="${P.difficulty===level?'active':'secondary'}" aria-pressed="${P.difficulty===level}">${level}</button>`).join('')}</div></div>`:'';
