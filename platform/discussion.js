@@ -31,7 +31,7 @@ async function acceptDiscussionState(state){
  if(boot?.role==='host'&&discussion.state&&view!=='discussion')return openDiscussion();if(view==='discussion')await drawDiscussion();
 }
 function drawPresentationInvite(){
- const t=(boot.presentations||[]).find(t=>t.id===discussion.pick&&t.ready);
+ const t=(boot.presentations||[]).find(t=>t.id===discussion.pick&&t.ready&&t.slides>0);
  $('#content').innerHTML=`<section class="panel"><h2>Zur Präsentation einladen</h2><p>${t?esc(t.title):'Wähle links ein Thema.'}</p><div class="row"><button data-send-presentation ${t?'':'disabled'}>Einladung abschicken</button>${discussion.state?'<button data-open-discussion class="secondary">Laufende Präsentation öffnen</button>':''}</div></section>`;
 }
 async function openDiscussion(){
@@ -79,7 +79,7 @@ new MutationObserver(discussionLocks).observe(document.body,{childList:true,subt
 
 async function browsePresentationTopic(id){
  if(!discussion.state||boot.role!=='host')return;
- const topic=(boot.presentations||[]).find(t=>t.id===id&&t.ready);if(!topic)return;
+ const topic=(boot.presentations||[]).find(t=>t.id===id&&t.ready&&t.slides>0);if(!topic)return;
  selected=id;discussion.preview=id===discussion.state.topic.id?null:{topic,index:discussion.presented.get(id)??discussion.positions.get(id)??0};discussion.renderKey=null;drawSidebar();await drawDiscussion();
 
 }
