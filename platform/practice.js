@@ -48,7 +48,9 @@ function drawPracticeRound(){
  if(t.submission)body+=`<section class="feedback"><strong>${t.submission.score} / 1.000 Punkte</strong><p>${t.solution.map(id=>esc(t.choices.find(c=>c.id===id)?.label||id)).join(' · ')}</p><p>${esc(t.explanation)}</p></section>`;
  else if(t.pending)body+='<p role="status">Antwort lokal vorgemerkt – wird übertragen.</p>';
  const next=r.position<r.tasks.length-1;
- el.innerHTML=`<section class="practice-round">${body}<div class="row practice-navigation"><button data-practice-prev class="secondary" ${r.position?'':'disabled'}>Zurück</button>${!locked?'<button data-practice-answer>Antwort prüfen</button>':''}<button data-practice-next ${locked&&next?'':'disabled'}>Weiter</button></div><p class="muted">${done} / ${r.tasks.length} Antworten gespeichert</p>${done===r.tasks.length?'<p class="saved">Übungsrunde abgeschlossen.</p><button data-practice-new>Neue Runde</button>':''}</section>`;
+ const complete=practiceAnswerComplete(t,answer);
+ el.innerHTML=`<section class="practice-round">${body}<footer class="practice-footer"><div class="practice-navigation"><button data-practice-prev class="practice-arrow" aria-label="Zur vorherigen Aufgabe" title="Pfeil nach oben" ${r.position?'':'disabled'}>↑</button><button data-practice-answer class="practice-evaluate" title="Enter" ${locked||!complete?'disabled':''}>${locked?'Auswertung':'Auswerten'}</button><button data-practice-next class="practice-arrow" aria-label="Zur nächsten Aufgabe" title="Pfeil nach unten" ${locked&&next?'':'disabled'}>↓</button></div><span class="practice-progress" aria-label="Aufgabenposition">${r.position+1}/${r.tasks.length}</span><div class="practice-progress-track" role="progressbar" aria-label="Ausgewertete Aufgaben" aria-valuemin="0" aria-valuemax="${r.tasks.length}" aria-valuenow="${done}"><span style="width:${100*done/r.tasks.length}%"></span></div></footer>${done===r.tasks.length?'<p class="saved">Übungsrunde abgeschlossen.</p><button data-practice-new>Neue Runde</button>':''}</section>`;
+
 }
 document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const d=b.dataset;if(!Object.keys(d).some(k=>k.startsWith('practice')))return;guarded(async()=>{
  if('practiceKnowledge'in d){P.knowledge=!P.knowledge;b.className=P.knowledge?'active':'secondary';b.setAttribute('aria-pressed',String(P.knowledge));drawSidebar();if(P.knowledge)await refreshKnowledge();return}
@@ -62,3 +64,16 @@ document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)r
  if('practicePrev'in d&&r.position){r.position--;practiceSave();drawPracticeRound()}
  },b)});
 document.addEventListener('change',e=>{const el=e.target;if(el.dataset.practiceTopic){el.checked?P.selection.add(el.dataset.practiceTopic):P.selection.delete(el.dataset.practiceTopic);drawSidebar()}if(el.dataset.practiceField!==undefined&&P.round){const t=P.round.tasks[P.round.position];if(t.submission||t.pending)return;const answer=richAnswer(t,P.round.draft[t.key]||Array(t.fields.length).fill(''));answer[Number(el.dataset.practiceField)]=el.value;P.round.draft[t.key]=answer;practiceSave()}});
+
+function practiceAnswerComplete(t,answer){const complete=richComplete(t,answer);return complete===null?!!answer.length&&(t.kind==='choice'||answer.length===t.fields.length&&answer.every(Boolean))&&(t.kind!=='order'||new Set(answer).size===answer.length):complete;}
+function updatePracticeControls(){if(view!=='practice'||!P.round)return;const t=P.round.tasks[P.round.position],b=$('[data-practice-answer]');if(b)b.disabled=!!(t.submission||t.pending)||!practiceAnswerComplete(t,richAnswer(t,P.round.draft[t.key]||[]));}
+document.addEventListener('change',updatePracticeControls);
+document.addEventListener('input',()=>queueMicrotask(updatePracticeControls));
+document.addEventListener('keydown',e=>{
+ if(view!=='practice'||!P.round||e.defaultPrevented||e.altKey||e.ctrlKey||e.metaKey||e.repeat)return;
+ if(e.target.closest('input,textarea,select,[contenteditable="true"],dialog,[role="dialog"]'))return;
+ const controls={Enter:'[data-practice-answer]',ArrowUp:'[data-practice-prev]',ArrowDown:'[data-practice-next]'};
+ if(controls[e.key]){e.preventDefault();const b=$(controls[e.key]);if(b&&!b.disabled)b.click();return;}
+ const t=P.round.tasks[P.round.position];if(t.kind!=='choice'||t.submission||t.pending||e.key.length!==1)return;
+ const i='abcdefghijklmnopqrstuvwxyz'.indexOf(e.key.toLowerCase());const b=document.querySelectorAll('.practice-round [data-practice-choice]')[i];if(i>=0&&b&&!b.disabled){e.preventDefault();b.click();}
+});
