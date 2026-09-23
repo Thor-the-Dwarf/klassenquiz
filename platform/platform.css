@@ -81,3 +81,6 @@ body.learner-layout>header{position:fixed;top:auto;bottom:0;left:0;right:0;borde
 .practice-footer .practice-evaluate:disabled{opacity:.38}
 .practice-progress{justify-self:end;font-weight:900;color:var(--muted)}
 @media(max-width:600px){.practice-footer{grid-template-columns:1fr;gap:8px}.practice-footer .practice-navigation{grid-column:1;gap:10px}.practice-footer .practice-evaluate{min-width:0;flex:1;font-size:18px}.practice-footer .practice-arrow{flex:0 0 48px;width:48px;height:48px}.practice-progress{font-size:13px}}
+
+.learner-layout .shell:has(#sidebar:empty){grid-template-columns:minmax(0,1fr)}
+.learner-layout .shell>#sidebar:empty{display:none}
