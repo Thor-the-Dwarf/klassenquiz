@@ -86,3 +86,20 @@ body.learner-layout>header{position:fixed;top:auto;bottom:0;left:0;right:0;borde
 .learner-layout .shell>#sidebar:empty{display:none}
 
 .audio-settings{display:flex;flex-wrap:wrap;gap:14px;align-items:center;margin-top:20px}.audio-settings label{display:flex;align-items:center;gap:10px}.audio-settings select{width:auto;margin:0}.audio-round h2{white-space:pre-line;text-align:center;margin:40px auto;max-width:1100px}.audio-answers{display:flex;gap:18px;width:min(100%,1000px);margin:0 auto}.audio-answers button{flex:1;padding:30px 20px;min-height:150px;background:#18293d;border:1px solid var(--line);border-radius:20px}.audio-answers strong{font-size:28px}.audio-answers small,[data-audio-repeat] small{display:block;margin-top:12px}.audio-round [data-audio-repeat]{align-self:center;width:min(100%,500px);margin:16px 0}.audio-round #audio-status{text-align:center;color:var(--cyan)}.audio-round .feedback{max-width:none}@media(max-width:600px){.audio-answers{gap:10px}.audio-answers button{padding:20px 10px;min-height:130px}.audio-answers strong{font-size:22px}.audio-round h2{margin:24px 0}.audio-answers small{font-size:12px}}
+
+/* Audio controls match the standalone exercises. */
+.audio-round .audio-settings{order:0;align-self:flex-end;justify-content:flex-end;align-items:stretch;margin:16px 0;gap:12px;max-width:100%}
+.audio-settings label,.audio-settings [data-audio-mic]{box-sizing:border-box;min-height:76px;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:transparent;color:var(--muted);font-size:16px}
+.audio-settings label{display:flex;flex-direction:column;align-items:stretch;justify-content:center;gap:8px;width:195px}
+.audio-settings .audio-volume strong{display:flex;justify-content:space-between;gap:14px}.audio-volume output{font-weight:400;font-variant-numeric:tabular-nums}
+.audio-settings input[type=range]{width:100%;margin:0;padding:0;min-height:22px;accent-color:var(--cyan);cursor:pointer}
+.audio-settings select{width:100%;padding:3px 22px 3px 0;border:0;background:transparent;color:var(--text);font-size:16px}.audio-settings select option{background:#101a2a}
+.audio-settings [data-audio-mic]{display:flex;align-items:center;gap:14px;text-align:left}.audio-settings [data-audio-mic] svg{flex-shrink:0}.audio-settings .mic-caption small{display:block;font-weight:400;color:var(--muted);margin-top:3px}
+.audio-settings [data-audio-mic][aria-pressed=true]{color:#6ee6a1;border-color:#6ee6a1;background:#14372a}.audio-settings [aria-pressed=true] #micSlash{display:none}
+.audio-round .audio-answers{width:min(100%,500px);gap:12px}.audio-round .audio-answers button,.audio-round [data-audio-repeat]{border:1px solid var(--line);border-radius:12px;background:#1a2a42;padding:16px 18px;text-align:center;color:var(--text)}
+.audio-round .audio-answers strong,.audio-round [data-audio-repeat] strong{display:block;font-size:22px}.audio-round .audio-answers small,.audio-round [data-audio-repeat] small{display:block;font-size:14px;font-weight:400;line-height:1.4;color:var(--muted);margin-top:12px}
+.audio-round .input-icons{display:inline-flex;align-items:center;justify-content:center;gap:18px;min-height:40px;margin:2px 0 6px;color:var(--text)}.audio-round .input-icons svg{flex-shrink:0}
+.audio-round [data-audio-repeat]{width:min(100%,500px);margin:12px 0;align-self:center}
+@media(max-width:600px){.audio-round .audio-settings{width:100%;gap:8px}.audio-settings label{width:auto;min-width:140px;flex:1}.audio-settings [data-audio-mic]{flex:1;justify-content:center}.audio-round .audio-answers button{padding:14px 8px}.audio-round .audio-answers strong{font-size:20px}.audio-round .audio-answers small{font-size:13px}}
+
+.audio-volume output{white-space:nowrap}
