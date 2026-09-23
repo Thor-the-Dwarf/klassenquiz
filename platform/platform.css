@@ -50,3 +50,6 @@ body.learner-layout>header{position:fixed;top:auto;bottom:0;left:0;right:0;borde
 @media(max-width:520px){.learner-layout header #identity{display:none}.learner-layout header #learner-menu{margin-left:auto}.learner-layout header button{font-size:14px;padding:10px 12px}}
 
 @media(max-width:760px){.shell:has(.discussion-view)>aside{display:none}.discussion-view{height:calc(100dvh - var(--appbar-height,75px) - 16px)}.discussion-view .slide-stage{flex:1;aspect-ratio:auto}}
+
+.discussion-locked{opacity:.55;pointer-events:none}header select:disabled{opacity:.5;cursor:default}
+@media(max-width:520px){.learner-layout header:has(#learner-discussion.active) button{padding:10px 8px}}
