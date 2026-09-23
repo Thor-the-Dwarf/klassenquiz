@@ -56,7 +56,7 @@ function listenAudioPractice(){
  if(!a.mic||!Recognition||!audioCurrent()||a.recognition||a.transition)return;
  const t=P.round.tasks[P.round.position];if(t.submission||t.pending)return;
  const revision=a.revision,r=new Recognition();a.recognition=r;r.lang='de-DE';r.interimResults=false;r.continuous=false;
- r.onresult=e=>{if(a.revision!==revision)return;const words=e.results[0][0].transcript.toLowerCase().replace(/[.!?,]/g,'').trim();
+ r.onresult=e=>{if(a.revision!==revision)return;if($('#learner-menu-dialog')?.open)return;const words=e.results[0][0].transcript.toLowerCase().replace(/[.!?,]/g,'').trim();
   if(/^(ja|richtig|stimmt|korrekt|wahr|genau|passt|trifft zu)$/.test(words))answerAudioPractice('true');else if(/^(nein|falsch|stimmt nicht|nicht richtig|inkorrekt|nicht wahr|nope|passt nicht|trifft nicht zu)$/.test(words))answerAudioPractice('false');else if(/^(nochmal|noch einmal|wiederholen)$/.test(words))playAudioPractice();else audioStatus('Bitte „richtig“, „falsch“ oder „nochmal“ sagen.');};
  r.onerror=e=>{if(a.revision!==revision)return;if(['not-allowed','service-not-allowed','audio-capture'].includes(e.error)){a.mic=false;const b=$('[data-audio-mic]');if(b){b.setAttribute('aria-pressed','false');}}if(e.error!=='no-speech')a.mic=false;audioStatus('Spracherkennung nicht verfügbar. Nutze die Buttons oder Pfeiltasten.');};
  r.onend=()=>{if(a.recognition===r)a.recognition=null;if(a.revision===revision&&a.mic&&audioCurrent()&&!a.transition)a.timer=setTimeout(listenAudioPractice,900);};
@@ -71,7 +71,7 @@ document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b||
 });
 document.addEventListener('change',e=>{if(e.target.id==='audio-rate'){audioPractice.rate=Number(e.target.value);if(audioPractice.player)audioPractice.player.playbackRate=audioPractice.rate;}});
 document.addEventListener('keydown',e=>{
- if(!audioCurrent()||e.defaultPrevented||e.repeat||e.altKey||e.ctrlKey||e.metaKey||e.target.closest('input,select,textarea,[contenteditable="true"]'))return;
+ if(!audioCurrent()||e.defaultPrevented||e.repeat||e.altKey||e.ctrlKey||e.metaKey||e.target.closest('input,select,textarea,dialog,[contenteditable="true"]'))return;
  if(!['ArrowLeft','ArrowRight','ArrowDown'].includes(e.key))return;e.preventDefault();if(e.key==='ArrowDown')playAudioPractice();else answerAudioPractice(e.key==='ArrowLeft'?'true':'false');
 });
 document.addEventListener('contextmenu',e=>{if(audioCurrent()&&e.target.closest('#audio-practice')&&!e.target.closest('input,select,textarea,.audio-settings')){e.preventDefault();answerAudioPractice('false');}});
@@ -82,6 +82,6 @@ window.addEventListener('pagehide',stopAudioPractice);
 
 new MutationObserver(()=>{if(audioPractice.key&&!audioCurrent())stopAudioPractice()}).observe(document.body,{childList:true,subtree:true});
 
-document.addEventListener('click',e=>{if(audioCurrent()&&e.button===0&&e.detail<=1&&e.target.closest('#audio-practice')&&!e.target.closest('button,a,input,select,textarea,[contenteditable="true"],.audio-settings'))answerAudioPractice('true');});
+document.addEventListener('click',e=>{if(audioCurrent()&&e.button===0&&e.detail<=1&&e.target.closest('#audio-practice')&&!e.target.closest('button,a,input,select,textarea,dialog,[contenteditable="true"],.audio-settings'))answerAudioPractice('true');});
 
 document.addEventListener('input',e=>{if(e.target.id!=='audio-volume')return;audioPractice.volume=Number(e.target.value)/100;if(audioPractice.player)audioPractice.player.volume=audioPractice.volume;const out=$('#audio-volume-value');if(out)out.textContent=e.target.value+' %';e.target.setAttribute('aria-valuetext',e.target.value+' Prozent');});
