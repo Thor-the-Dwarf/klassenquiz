@@ -56,3 +56,5 @@ body.learner-layout>header{position:fixed;top:auto;bottom:0;left:0;right:0;borde
 
 .presentation-tree-collapsed .shell{grid-template-columns:minmax(0,1fr)}.presentation-tree-collapsed .shell>aside{display:none}.presenting-label{display:block;color:var(--cyan);font-size:12px}.presenting-label::before{content:'● ';color:#ff525e}.preview-label{font-size:13px;color:var(--muted)}.presentation-switch-dialog{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:16px;max-width:min(480px,90vw);padding:24px}.presentation-switch-dialog::backdrop{background:#0008}
 @media(max-width:760px){.presentation-tree-open .shell:has(.discussion-view)>aside{display:block;position:fixed;top:var(--appbar-height,75px);bottom:0;left:0;width:min(320px,90vw);max-height:none;z-index:25;background:var(--panel);overflow:auto;box-shadow:5px 0 20px #0008}}
+
+.presented-label{display:block;color:#69aaff;font-size:12px}.presented-label::before{content:"● ";color:#398fff}

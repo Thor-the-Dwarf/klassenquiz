@@ -1,6 +1,6 @@
 'use strict';
-const discussion={state:null,classId:null,pick:null,renderKey:null,revision:0,url:null,previous:'home',previousSelected:null,treeOpen:false,preview:null,positions:new Map(),seen:new Set()};
-function resetDiscussion(){discussion.treeOpen=false;discussion.preview=null;discussion.positions.clear();$('#presentation-switch-dialog')?.remove();discussion.state=null;discussion.classId=cls?.id;discussion.pick=null;discussion.renderKey=null;discussion.revision++;if(discussion.url)URL.revokeObjectURL(discussion.url);discussion.url=null;}
+const discussion={state:null,classId:null,pick:null,renderKey:null,revision:0,url:null,previous:'home',previousSelected:null,treeOpen:false,preview:null,positions:new Map(),presented:new Map(),seen:new Set()};
+function resetDiscussion(){discussion.treeOpen=false;discussion.preview=null;discussion.positions.clear();discussion.presented.clear();$('#presentation-switch-dialog')?.remove();discussion.state=null;discussion.classId=cls?.id;discussion.pick=null;discussion.renderKey=null;discussion.revision++;if(discussion.url)URL.revokeObjectURL(discussion.url);discussion.url=null;}
 const discussionDisabled=new WeakMap();
 function discussionLocked(){return !!boot&&(boot.role==='host'?!!discussion.state:view==='discussion')}
 function discussionLocks(){
@@ -27,7 +27,7 @@ function discussionButtons(){
 async function leaveDiscussion(){discussion.renderKey=null;const dest=discussion.previous;selected=discussion.previousSelected;if(dest==='exercise'&&selected)return openExercise(selected);return navigate(['discussion','presentation-invite'].includes(dest)?'home':dest)}
 async function endDiscussion(){const state=discussion.state;if(!state)return;const next=await request('presentationControl',{sessionId:state.id,revision:state.revision,command:'end'});await acceptDiscussionState(next);await navigate('home')}
 async function acceptDiscussionState(state){
- if(discussion.classId!==cls?.id)resetDiscussion();if(state&&discussion.state?.id===state.id&&state.revision<discussion.state.revision)return;const changedTopic=discussion.state?.topic.id!==state?.topic.id;if(discussion.state?.id!==state?.id){discussion.treeOpen=false;discussion.preview=null;discussion.positions.clear()}discussion.state=state||null;if(state)discussion.positions.set(state.topic.id,state.index);if(discussion.preview?.topic.id===state?.topic.id)discussion.preview=null;discussionButtons();if(changedTopic&&boot?.role==='host'&&$('#sidebar'))drawSidebar();
+ if(discussion.classId!==cls?.id)resetDiscussion();if(state&&discussion.state?.id===state.id&&state.revision<discussion.state.revision)return;const changedTopic=discussion.state?.topic.id!==state?.topic.id;if(discussion.state?.id!==state?.id){discussion.treeOpen=false;discussion.preview=null;discussion.positions.clear();discussion.presented.clear()}discussion.state=state||null;if(state){if(!discussion.presented.size){try{const saved=JSON.parse(sessionStorage.getItem('lp-presentation-history-'+cls.id)||'null');if(saved?.id===state.id)for(const [id,index] of saved.topics||[])if(typeof id==='string'&&Number.isInteger(index)&&index>=0)discussion.presented.set(id,index)}catch{}}discussion.positions.set(state.topic.id,state.index);discussion.presented.set(state.topic.id,state.index);try{sessionStorage.setItem('lp-presentation-history-'+cls.id,JSON.stringify({id:state.id,topics:[...discussion.presented]}))}catch{}}if(discussion.preview?.topic.id===state?.topic.id)discussion.preview=null;discussionButtons();if(changedTopic&&boot?.role==='host'&&$('#sidebar'))drawSidebar();
  if(boot?.role==='host'&&discussion.state&&view!=='discussion')return openDiscussion();if(view==='discussion')await drawDiscussion();
 }
 function drawPresentationInvite(){
@@ -78,8 +78,8 @@ new MutationObserver(discussionLocks).observe(document.body,{childList:true,subt
 async function browsePresentationTopic(id){
  if(!discussion.state||boot.role!=='host')return;
  const topic=(boot.presentations||[]).find(t=>t.id===id&&t.ready);if(!topic)return;
- selected=id;discussion.preview=id===discussion.state.topic.id?null:{topic,index:discussion.positions.get(id)||0};discussion.renderKey=null;drawSidebar();await drawDiscussion();
- if(discussion.preview)confirmPresentationTopic();
+ selected=id;discussion.preview=id===discussion.state.topic.id?null:{topic,index:discussion.presented.get(id)??discussion.positions.get(id)??0};discussion.renderKey=null;drawSidebar();await drawDiscussion();
+
 }
 function confirmPresentationTopic(){
  const target=discussion.preview,state=discussion.state;if(!target||!state)return;
@@ -92,4 +92,10 @@ function confirmPresentationTopic(){
  const button=dialog.querySelector('[data-switch-yes]');button.disabled=true;
  try{const next=await request('presentationControl',{sessionId:state.id,revision:state.revision,command:'switch',topic:target.topic.id,index:target.index});discussion.preview=null;selected=next.topic.id;dialog.close();await acceptDiscussionState(next);drawSidebar()}catch(e){dialog.querySelector('[role="status"]').textContent=e.message;button.disabled=false}
  };
+}
+
+function presentationTopicMark(id){
+ if(discussion.state?.topic.id===id)return '<small class="presenting-label">Wird präsentiert</small>';
+ if(discussion.presented.has(id))return '<small class="presented-label">Hierhin zurückkehren</small>';
+ return '';
 }
