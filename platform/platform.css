@@ -45,3 +45,8 @@ body.learner-layout>header{position:fixed;top:auto;bottom:0;left:0;right:0;borde
 .learner-layout .shell{min-height:calc(100dvh - var(--appbar-height,75px))}
 .learner-layout .shell>aside{top:0}
 @media(max-width:520px){.learner-layout>header{gap:8px}.learner-layout header button{padding:10px 14px}.learner-layout header #identity{font-size:14px}}
+
+#learner-discussion{position:relative}.notification-dot{display:none;position:absolute;right:0;top:0;width:12px;height:12px;background:#ff414d;border:2px solid #101424;border-radius:50%}#learner-discussion.unread .notification-dot{display:block}#learner-discussion.active{border-color:var(--cyan)}
+@media(max-width:520px){.learner-layout header #identity{display:none}.learner-layout header #learner-menu{margin-left:auto}.learner-layout header button{font-size:14px;padding:10px 12px}}
+
+@media(max-width:760px){.shell:has(.discussion-view)>aside{display:none}.discussion-view{height:calc(100dvh - var(--appbar-height,75px) - 16px)}.discussion-view .slide-stage{flex:1;aspect-ratio:auto}}
