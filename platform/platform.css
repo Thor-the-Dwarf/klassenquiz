@@ -80,6 +80,4 @@ body.learner-layout>header{position:fixed;top:auto;bottom:0;left:0;right:0;borde
 .practice-footer .practice-evaluate{min-width:240px;height:52px;font-size:20px;font-weight:1000}
 .practice-footer .practice-evaluate:disabled{opacity:.38}
 .practice-progress{justify-self:end;font-weight:900;color:var(--muted)}
-.practice-progress-track{grid-column:1/-1;height:5px;background:#203248;border-radius:5px;overflow:hidden}
-.practice-progress-track>span{display:block;height:100%;background:#46d7ff;transition:width .2s}
 @media(max-width:600px){.practice-footer{grid-template-columns:1fr;gap:8px}.practice-footer .practice-navigation{grid-column:1;gap:10px}.practice-footer .practice-evaluate{min-width:0;flex:1;font-size:18px}.practice-footer .practice-arrow{flex:0 0 48px;width:48px;height:48px}.practice-progress{font-size:13px}}
