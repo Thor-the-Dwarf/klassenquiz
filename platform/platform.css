@@ -103,3 +103,5 @@ body.learner-layout>header{position:fixed;top:auto;bottom:0;left:0;right:0;borde
 @media(max-width:600px){.audio-round .audio-settings{width:100%;gap:8px}.audio-settings label{width:auto;min-width:140px;flex:1}.audio-settings [data-audio-mic]{flex:1;justify-content:center}.audio-round .audio-answers button{padding:14px 8px}.audio-round .audio-answers strong{font-size:20px}.audio-round .audio-answers small{font-size:13px}}
 
 .audio-volume output{white-space:nowrap}
+
+label.practice-topic{margin:0;cursor:pointer}label.practice-topic:has(input:disabled){cursor:default}
