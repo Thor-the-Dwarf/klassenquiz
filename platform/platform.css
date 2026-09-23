@@ -35,3 +35,13 @@ header #learner-menu{margin-left:auto}header #learner-menu.active{border-color:v
 body>header{position:sticky;top:0;z-index:30;background:#101424;box-shadow:0 2px 8px #0002}.shell>aside{top:var(--appbar-height,75px);max-height:calc(100dvh - var(--appbar-height,75px))}@media(max-width:760px){.shell>aside{position:static;max-height:35dvh}}
 
 .shell:has(.presentation-view)>main{padding:8px}.presentation-view{max-width:none;width:100%;height:calc(100dvh - var(--appbar-height,75px) - 16px);display:flex;flex-direction:column;gap:8px}.presentation-view .slide-stage{flex:1;min-height:0;margin:0;border:0;border-radius:6px}.presentation-view .slide-stage img{width:100%;height:100%;max-height:none;object-fit:contain}.presentation-view .slide-navigation{flex:none;gap:8px}.presentation-view .slide-navigation button{padding:8px 12px;font-size:14px}.treefile.active{background:#392551;box-shadow:inset 3px 0 var(--cyan)}.treefile.active button{font-weight:700}@media(max-width:760px){.presentation-view{height:auto}.presentation-view .slide-stage{flex:none;aspect-ratio:16/9}.presentation-view .slide-navigation{gap:6px}.presentation-view .slide-navigation button{padding:7px 10px}}
+
+/* Participant controls stay at the bottom, including the device safe area. */
+body.learner-layout{padding-bottom:var(--appbar-height,75px);scroll-padding-bottom:var(--appbar-height,75px)}
+body.learner-layout>header{position:fixed;top:auto;bottom:0;left:0;right:0;border-bottom:0;border-top:1px solid var(--line);padding:12px max(16px,env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));gap:12px}
+.learner-layout #header-start{display:none}
+.learner-layout header #identity{margin-left:auto;min-width:0;overflow-wrap:anywhere;flex:1;text-align:right}
+.learner-layout header #learner-menu{margin-left:0}
+.learner-layout .shell{min-height:calc(100dvh - var(--appbar-height,75px))}
+.learner-layout .shell>aside{top:0}
+@media(max-width:520px){.learner-layout>header{gap:8px}.learner-layout header button{padding:10px 14px}.learner-layout header #identity{font-size:14px}}
