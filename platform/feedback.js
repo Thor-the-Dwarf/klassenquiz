@@ -8,16 +8,20 @@ function flashFeedback(){
  feedbackFlashTimer=setTimeout(()=>elements.forEach(el=>el.classList.remove('feedback-blocked')),700);
 }
 function toggleFeedback(open){
+ if(feedbackBusy&&!open){flashFeedback();return;}
+ if(!open)rememberFeedback();
  const panel=document.querySelector('#feedback-section'),button=document.querySelector('#learner-feedback');
  const wasOpen=feedbackLocked();
  const visible=!!open&&document.body.classList.contains('learner-layout');
  panel.hidden=!visible;document.body.classList.toggle('feedback-open',visible);
  button.setAttribute('aria-expanded',String(visible));button.classList.toggle('active',visible);
  if(visible&&!wasOpen){
+  prepareFeedback();
   if(typeof audioCurrent==='function'&&audioCurrent()){const advance=audioPractice.transition;stopAudioPractice();feedbackPending.set('audio',()=>advance?advanceAudioPractice():drawAudioPractice());}
   if(view==='discussion'){discussion.renderKey=null;feedbackPending.set('discussion',drawDiscussion);}
   if(view==='presentation')feedbackPending.set('presentation',drawPresentation);
-  document.querySelector('#feedback-rating').focus();
+  document.querySelector('#feedback-rating').focus({preventScroll:true});
+  if(matchMedia('(max-width:700px)').matches)panel.scrollIntoView({block:'start'});
  }else if(!visible&&wasOpen){const pending=[...feedbackPending.values()];feedbackPending.clear();if(document.body.classList.contains('learner-layout'))void (async()=>{for(const fn of pending)await fn();await refreshClass();})().catch(showError);}
 
 }
@@ -25,7 +29,7 @@ function syncFeedback(){
  syncHostFeedback();
  const learner=document.body.classList.contains('learner-layout');
  document.querySelector('#learner-feedback').hidden=!learner;
- if(!learner){feedbackPending.clear();toggleFeedback(false);document.querySelector('#feedback-form').reset();document.querySelector('#feedback-rating-value').value='5';}
+ if(!learner){feedbackDrafts.clear();feedbackDraft=null;feedbackPending.clear();toggleFeedback(false);document.querySelector('#feedback-form').reset();document.querySelector('#feedback-rating-value').value='5';}
 }
 document.addEventListener('click',e=>{
  if(e.target.closest('#learner-feedback'))toggleFeedback(document.querySelector('#feedback-section').hidden);
