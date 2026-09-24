@@ -30,6 +30,7 @@ function closeHostFeedback(returnHome=false){
  if(returnHome&&boot?.role==='host')void restoreHostContent().catch(showError);
 }
 async function openHostFeedback(id){
+ navigationFeedback={id,example:true};
  if(boot?.role!=='host')return;const f=hostFeedbackExamples.find(x=>x.id===id);if(!f)return;
  await capture();rememberHostContent();hostNavigation.panel='feedback';closeHostFeedback(false);const revision=++hostFeedbackRevision;
  view='host-feedback';selected=f.topic;frameInfo=null;drawTabs();drawSidebar();
@@ -72,6 +73,7 @@ async function openFeedbackArchive(){
 
 function feedbackWeekLabel(value){const start=new Date(value),end=new Date(value+6*86400000);return `Woche ${start.toLocaleDateString('de-DE',{timeZone:'UTC'})} – ${end.toLocaleDateString('de-DE',{timeZone:'UTC'})}`;}
 async function openRealFeedback(id){
+ navigationFeedback={id,example:false};
  if(boot?.role!=='host')return;await capture();rememberHostContent();hostNavigation.panel='feedback';stopAudioPractice();closeHostFeedback(false);const revision=++hostFeedbackRevision,session=auth;
  const f=await feedbackRequest('read',{id},true);if(auth!==session||revision!==hostFeedbackRevision)return;
  const snap=f.snapshot;view='host-feedback';selected=snap.topic;frameInfo=null;drawTabs();drawSidebar();document.body.classList.add('host-feedback-open');
