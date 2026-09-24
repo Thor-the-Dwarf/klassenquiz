@@ -7,11 +7,12 @@ const hostFeedbackExamples=[
 ];
 let hostFeedbackRevision=0,hostFeedbackUrl=null;
 function hostFeedbackRead(){try{return new Set(JSON.parse(sessionStorage.getItem('lp-example-feedback-read')||'[]'))}catch{return new Set()}}
+function hostFeedbackArchived(){try{return new Set(JSON.parse(sessionStorage.getItem('lp-example-feedback-archived')||'[]'))}catch{return new Set()}}
 function drawHostFeedbackList(){
- const read=hostFeedbackRead(),unread=hostFeedbackExamples.filter(f=>!read.has(f.id)).length;
+ const read=hostFeedbackRead(),archived=hostFeedbackArchived(),active=hostFeedbackExamples.filter(f=>!archived.has(f.id)),unread=active.filter(f=>!read.has(f.id)).length;
  const badge=document.querySelector('#host-feedback-count');badge.textContent=unread;badge.hidden=!unread;
  document.querySelector('#host-feedback-button').setAttribute('aria-label',unread?`Feedback, ${unread} neue Meldungen`:'Feedback');
- document.querySelector('#host-feedback-list').innerHTML=`<ul>${hostFeedbackExamples.map(f=>`<li><button data-feedback-example="${f.id}" class="${read.has(f.id)?'':'unread'}">${esc(f.path)}</button></li>`).join('')}</ul>`;
+ document.querySelector('#host-feedback-list').innerHTML=`<ul><li class="feedback-archive-link"><button data-feedback-archive>Feedback Archiv</button></li>${active.map(f=>`<li class="feedback-inbox-row"><button data-feedback-example="${f.id}" class="${read.has(f.id)?'':'unread'}">${esc(f.path)}</button><button class="feedback-done" data-feedback-done="${f.id}" aria-label="Erledigt: ${esc(f.path)}">Erledigt</button></li>`).join('')}</ul>${active.length?'':'<p class="muted feedback-inbox-empty">Keine offenen Beispielfeedbacks</p>'}`;
 }
 function syncHostFeedback(){
  const host=typeof boot!=='undefined'&&boot?.role==='host'&&auth?.role==='host';
@@ -20,7 +21,7 @@ function syncHostFeedback(){
 }
 function closeHostFeedback(returnHome=false){
  hostFeedbackRevision++;if(hostFeedbackUrl){URL.revokeObjectURL(hostFeedbackUrl);hostFeedbackUrl=null;}
- document.body.classList.remove('host-feedback-open');document.querySelector('#host-feedback-section').hidden=true;
+ document.body.classList.remove('host-feedback-open','host-feedback-archive-open');document.querySelector('#host-feedback-section').hidden=true;
  document.querySelector('#host-feedback-list').hidden=true;document.querySelector('#host-feedback-button').setAttribute('aria-expanded','false');
  if(returnHome&&boot?.role==='host')void navigate('home').catch(showError);
 }
@@ -37,11 +38,28 @@ async function openHostFeedback(id){
  try{const blob=await materialBlob({topic:f.topic,slide:f.slide});if(revision!==hostFeedbackRevision)return;const next=await decodedSlide(blob,`${topic?.title||f.topic} – Folie ${f.slide+1}`);if(revision!==hostFeedbackRevision){URL.revokeObjectURL(next.url);return;}hostFeedbackUrl=next.url;$('#feedback-slide').replaceChildren(next.img);}catch(e){if(revision===hostFeedbackRevision)$('#feedback-slide').textContent=e.message;}
 }
 document.addEventListener('click',e=>{
+ if(e.target.closest('[data-feedback-archive]')){void openFeedbackArchive().catch(showError);return;}
+ const done=e.target.closest('[data-feedback-done]');if(done){archiveExampleFeedback(done.dataset.feedbackDone);return;}
  if(e.target.closest('#host-feedback-button')){const list=$('#host-feedback-list');list.hidden=!list.hidden;$('#host-feedback-button').setAttribute('aria-expanded',String(!list.hidden));return;}
  const entry=e.target.closest('[data-feedback-example]');if(entry){void openHostFeedback(entry.dataset.feedbackExample).catch(showError);return;}
  if(e.target.closest('#host-feedback-close')){closeHostFeedback(true);return;}
  if(!e.target.closest('#host-feedback-menu')){$('#host-feedback-list').hidden=true;$('#host-feedback-button').setAttribute('aria-expanded','false');}
 });
-document.addEventListener('click',e=>{if(document.body.classList.contains('host-feedback-open')&&e.target.closest('header button,#sidebar button,#sidebar select')&&!e.target.closest('#host-feedback-menu'))closeHostFeedback(false);},{capture:true});
+document.addEventListener('click',e=>{if((document.body.classList.contains('host-feedback-open')||document.body.classList.contains('host-feedback-archive-open'))&&e.target.closest('header button,#sidebar button,#sidebar select')&&!e.target.closest('#host-feedback-menu'))closeHostFeedback(false);},{capture:true});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){$('#host-feedback-list').hidden=true;$('#host-feedback-button').setAttribute('aria-expanded','false');}});
 document.addEventListener('change',e=>{if(e.target.id==='class-select')closeHostFeedback(false);},{capture:true});
+
+// UI prototype only: archive state is limited to this browser session.
+function archiveExampleFeedback(id){
+ if(boot?.role!=='host'||!hostFeedbackExamples.some(f=>f.id===id))return;
+ const archived=hostFeedbackArchived();archived.add(id);try{sessionStorage.setItem('lp-example-feedback-archived',JSON.stringify([...archived]))}catch{}
+ drawHostFeedbackList();
+}
+async function openFeedbackArchive(){
+ if(boot?.role!=='host')return;await capture();closeHostFeedback(false);view='feedback-archive';frameInfo=null;drawTabs();drawSidebar();document.body.classList.add('host-feedback-archive-open');
+ const archived=hostFeedbackArchived(),tree={children:new Map(),items:[]};
+ for(const f of hostFeedbackExamples){let node=tree;for(const title of f.path.split(' | ').reverse()){if(!node.children.has(title))node.children.set(title,{title,children:new Map(),items:[]});node=node.children.get(title);if(archived.has(f.id))node.items.push(f);}}
+ function metric(node){const n=node.items.length,avg=n?node.items.reduce((sum,f)=>sum+f.rating,0)/n:0;return `<span class="archive-metric"><span class="archive-bar" role="meter" aria-label="Durchschnittliche Bewertung" aria-valuemin="0" aria-valuemax="10" aria-valuenow="${avg.toFixed(1)}"><span style="width:${avg*10}%"></span></span><span>${n?avg.toLocaleString('de-DE',{maximumFractionDigits:1})+' / 10':'– / 10'}</span><small>${n} ${n===1?'Feedback':'Feedbacks'}</small></span>`;}
+ function branch(node){return [...node.children.values()].map(child=>`<details open class="archive-branch"><summary><span class="archive-title">${esc(child.title)}</span>${metric(child)}</summary><div class="archive-children">${child.children.size?branch(child):child.items.map(f=>`<div class="archive-feedback-row"><button class="archive-feedback-entry secondary" data-feedback-example="${f.id}">${esc(boot.presentations.find(t=>t.id===f.topic)?.title||f.topic)}</button>${metric({items:[f]})}</div>`).join('')||'<p class="muted">Noch kein Beispiel erledigt</p>'}</div></details>`).join('');}
+ $('#content').innerHTML=`<section class="feedback-archive"><p class="archive-placeholder" role="note">ACHTUNG! Placeholder ohne Funktion</p><h1>Feedback Archiv</h1><div class="archive-tree">${branch(tree)}</div></section>`;
+}
