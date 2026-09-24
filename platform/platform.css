@@ -140,3 +140,5 @@ label.practice-topic{margin:0;cursor:pointer}label.practice-topic:has(input:disa
 .archive-feedback-row{display:flex;align-items:center;gap:14px}.archive-feedback-row .archive-feedback-entry{width:30%;flex:none}.archive-feedback-row .archive-metric{flex:1}@media(max-width:600px){.archive-feedback-row{display:block}.archive-feedback-row .archive-feedback-entry{width:auto}.archive-feedback-row .archive-metric{margin-bottom:14px}}
 
 .feedback-submit-row{display:flex;flex-direction:column;align-items:stretch;gap:12px;margin-top:24px}#feedback-send-anonymous{width:100%;padding:15px 24px;font-size:18px}#feedback-send-anonymous strong{font-weight:800}.feedback-submit-row small{display:block;font-size:13px;line-height:1.5;color:var(--muted)}
+
+#feedback-section,#host-feedback-section{height:calc(100dvh - var(--appbar-height,75px));min-height:calc(100dvh - var(--appbar-height,75px))}@media(max-width:700px){#feedback-section,#host-feedback-section{height:auto}}
