@@ -5,7 +5,7 @@ function navigationKey(){return boot&&cls?.id?`lp-navigation-v1:${boot.role}:${b
 function saveNavigation(){
  if(!navigationReady||navigationRestoring||!auth)return;
  const key=navigationKey();if(!key)return;
- storage.set(key,{view,selected,expanded:[...expanded],chartMode,chartDifficulty,chartSelection:[...chartSelection],
+ storage.set(key,{coreGraph:{active:[...coreDemo.active],selected:coreDemo.selected},view,selected,expanded:[...expanded],chartMode,chartDifficulty,chartSelection:[...chartSelection],
   host:{panel:hostNavigation.panel,base:hostNavigation.base,positions:[...hostNavigation.positions]},
   slide:slidesView.topic?{topic:slidesView.topic.id,index:slidesView.index}:null,
   practice:{mode:P.mode,choosing:P.choosing,selection:[...P.selection],round:P.round?.id,knowledge:P.knowledge},
@@ -17,7 +17,8 @@ async function restoreNavigation(){
  navigationReady=false;navigationRestoring=true;syncBrand();
  const saved=storage.get(navigationKey());
  try{
-  if(!saved){await drawView();return;}
+  if(!saved){coreDemo.active.clear();coreDemo.selected=null;await drawView();return;}
+  coreDemo.active=new Set((saved.coreGraph?.active||[]).filter(k=>['arp','lf','exam'].includes(k)));coreDemo.selected=saved.coreGraph?.selected??null;
   expanded.clear();for(const entry of saved.expanded||[])expanded.set(...entry);
   selected=saved.selected;chartMode=saved.chartMode||'latest';chartDifficulty=saved.chartDifficulty||'easy';chartSelection.clear();for(const id of saved.chartSelection||[])chartSelection.add(id);
   Object.assign(hostNavigation,{panel:saved.host?.panel||null,base:saved.host?.base||null,positions:new Map(saved.host?.positions||[])});
@@ -59,7 +60,7 @@ async function navigationHome(){
  navigationRestoring=true;
  try{
   await capture();practiceCache();stopAudioPractice();closeHostFeedback(false);navigationFeedback=null;
-  hostNavigation.panel=null;hostNavigation.base=null;hostNavigation.positions.clear();expanded.clear();chartSelection.clear();grantDraft=null;
+  coreDemo.active.clear();coreDemo.selected=null;hostNavigation.panel=null;hostNavigation.base=null;hostNavigation.positions.clear();expanded.clear();chartSelection.clear();grantDraft=null;
   selected=null;slidesView.revision++;slidesView.topic=null;slidesView.index=0;P.mode=null;P.choosing=false;P.selection.clear();P.knowledge=false;praxisPrevious=null;
   $('#learner-menu-dialog')?.close();message('');await navigate(boot.role==='host'?'browse':'home');scrollTo(0,0);
  }finally{navigationRestoring=false;saveNavigation();}
