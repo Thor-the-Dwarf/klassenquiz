@@ -149,3 +149,5 @@ label.practice-topic{margin:0;cursor:pointer}label.practice-topic:has(input:disa
 .host-view-tools{display:flex;justify-content:flex-end}.host-view-tools:has(button[hidden]){display:none}#host-view-close{width:30px;height:30px;padding:0;font-size:24px;line-height:1;margin:0 0 8px}#host-feedback-button.active{border-color:var(--cyan);background:linear-gradient(135deg,#8038db,#51137f)}.learner-layout .host-view-tools{display:none}
 
 @media(min-width:761px){.shell:has(#host-view-close:not([hidden])) .presentation-view{height:calc(100dvh - var(--appbar-height,75px) - 54px)}}
+
+.shell:has(.praxis-frame)>main{padding:0}.praxis-frame{display:block;width:100%;height:calc(100dvh - var(--appbar-height,75px));border:0;background:#090d1b}
