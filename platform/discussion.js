@@ -6,7 +6,7 @@ function discussionLocked(){return !!boot&&(boot.role==='host'?!!discussion.stat
 function discussionLocks(){
  const locked=discussionLocked();
  for(const el of document.querySelectorAll('header button,header select')){
- const exempt=boot?.role==='host'?['presentation-invite','presentation-tree-toggle'].includes(el.id):el.id==='learner-discussion';
+ const exempt=boot?.role==='host'?['presentation-invite','presentation-tree-toggle'].includes(el.id):['learner-discussion','learner-feedback'].includes(el.id);
  if(locked&&!exempt){if(!discussionDisabled.has(el))discussionDisabled.set(el,el.disabled);el.disabled=true}
  else if(discussionDisabled.has(el)){el.disabled=discussionDisabled.get(el);discussionDisabled.delete(el)}
  }
