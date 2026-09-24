@@ -42,7 +42,7 @@ async function practiceSelect(mode='visual'){
  if(next&&next!=='infographics'){await flush();const data=await request('practiceTopics',{modality:next});if(revision!==practiceNavigation)return;P.topics=data.topics;P.courses=data.courses||[];P.active=data.active?.id||null;P.knowledgeData=null;P.selection.clear();}
  practiceCache();P.mode=next;P.choosing=next==='visual'||next==='auditory';drawSidebar();drawTabs();
 }
-function drawPracticeHome(){$('#content').innerHTML=''}
+function drawPracticeHome(){drawHomeGraph()}
 function practiceCache(){if(!P.round)return;if(!storage.set(practiceKey(P.round.id),P.round))message('Der Zwischenstand konnte nicht lokal gespeichert werden. Bitte diese Seite geöffnet lassen.');const ids=storage.get(practiceHistoryKey())||[];storage.set(practiceHistoryKey(),[P.round.id,...ids.filter(id=>id!==P.round.id)])}
 async function practiceOpen(id){
  practiceCache();await flush();let round;
