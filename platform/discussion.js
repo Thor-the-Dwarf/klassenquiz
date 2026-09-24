@@ -26,7 +26,7 @@ function discussionButtons(){
 }
 async function leaveDiscussion(){discussion.renderKey=null;const dest=discussion.previous;selected=discussion.previousSelected;if(dest==='exercise'&&selected)return openExercise(selected);return navigate(['discussion','presentation-invite'].includes(dest)?'home':dest)}
 async function endDiscussion(){const state=discussion.state;if(!state)return;const next=await request('presentationControl',{sessionId:state.id,revision:state.revision,command:'end'});await acceptDiscussionState(next);await navigate('home')}
-async function acceptDiscussionState(state){
+async function acceptDiscussionState(state){if(deferFeedback('discussion-state',()=>acceptDiscussionState(state)))return;
  if(discussion.classId!==cls?.id)resetDiscussion();if(state&&discussion.state?.id===state.id&&state.revision<discussion.state.revision)return;const changedTopic=discussion.state?.topic.id!==state?.topic.id;if(discussion.state?.id!==state?.id){discussion.treeOpen=false;discussion.preview=null;discussion.positions.clear();discussion.presented.clear()}discussion.state=state||null;if(state){if(!discussion.presented.size){try{const saved=JSON.parse(sessionStorage.getItem('lp-presentation-history-'+cls.id)||'null');if(saved?.id===state.id)for(const [id,index] of saved.topics||[])if(typeof id==='string'&&Number.isInteger(index)&&index>=0)discussion.presented.set(id,index)}catch{}}discussion.positions.set(state.topic.id,state.index);discussion.presented.set(state.topic.id,state.index);try{sessionStorage.setItem('lp-presentation-history-'+cls.id,JSON.stringify({id:state.id,topics:[...discussion.presented]}))}catch{}}if(discussion.preview?.topic.id===state?.topic.id)discussion.preview=null;discussionButtons();if(changedTopic&&boot?.role==='host'&&$('#sidebar'))drawSidebar();
  if(boot?.role==='host'&&discussion.state&&view!=='discussion')return openDiscussion();if(view==='discussion')await drawDiscussion();
 }
@@ -40,7 +40,7 @@ async function openDiscussion(){
  discussion.seen.add(discussion.state.id);selected=discussion.state.topic.id;discussion.renderKey=null;
  await navigate('discussion');
 }
-async function drawDiscussion(){
+async function drawDiscussion(){if(deferFeedback('discussion',drawDiscussion))return;
  const owner=auth,classId=cls?.id,state=discussion.state;
  const preview=boot?.role==='host'?discussion.preview:null;const shown=preview||state;
  const key=cls?.id+':'+(state?state.id+':'+state.revision:'ended')+':'+(preview?preview.topic.id+':'+preview.index:'live');
@@ -53,7 +53,7 @@ async function drawDiscussion(){
  const template=document.createElement('template');template.innerHTML=markup;const nextNavigation=template.content.querySelector('.slide-navigation').innerHTML;
  if(oldStage?.isConnected&&oldStage.closest('.discussion-view')){if(host)oldStage.closest('.discussion-view').querySelector('.slide-navigation').innerHTML=nextNavigation}else $('#content').replaceChildren(template.content);
  $('#discussion-stage').setAttribute('aria-busy','true');
- const valid=()=>revision===discussion.revision&&view==='discussion'&&owner===auth&&classId===cls?.id&&!!$('#discussion-stage');
+ const valid=()=>!feedbackLocked()&&revision===discussion.revision&&view==='discussion'&&owner===auth&&classId===cls?.id&&!!$('#discussion-stage');
  try{
  const data=preview?{topic:topic.id}:{action:'presentationLiveAsset',sessionId:state.id,topic:topic.id};const blob=await materialBlob({...data,slide:index});
  if(!valid())return;const next=await decodedSlide(blob,topic.title+' – Folie '+(index+1));if(!valid()){URL.revokeObjectURL(next.url);return}const oldUrl=discussion.url;discussion.url=next.url;$('#discussion-stage').replaceChildren(next.img);$('#discussion-stage').closest('.discussion-view').querySelector('.slide-navigation').innerHTML=nextNavigation;$('#discussion-stage').closest('.discussion-view').setAttribute('aria-label','Gemeinsame Präsentation: '+topic.title);$('#discussion-stage').setAttribute('aria-busy','false');if(oldUrl)URL.revokeObjectURL(oldUrl);void preloadSlides(data,index,topic.slides,valid);

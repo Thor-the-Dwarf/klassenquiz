@@ -58,7 +58,7 @@ async function practiceStart(){
 }
 function practiceSave(){const r=P.round;if(!r)return;const draft=r.draft||{};enqueue('roundSave',{round:r.id,position:r.position,draft,revision:r.revision++,requestId:crypto.randomUUID()});practiceCache()}
 function practiceAck(item,result){if(!['roundSave','roundAnswer'].includes(item.action)||!boot?.me)return;const r=P.round?.id===item.data.round?P.round:storage.get(practiceKey(item.data.round));if(!r)return;if(item.action==='roundAnswer'){const t=r.tasks[item.data.index];t.submission={answer:result.answer,score:result.score};t.solution=result.solution;t.explanation=result.explanation;delete t.pending;r.completed=r.tasks.every(t=>t.submission)?Date.now():null}storage.set(practiceKey(r.id),r);if(item.action==='roundAnswer'&&P.round===r&&view==='practice')drawPracticeRound();if(P.knowledge&&item.action==='roundAnswer')refreshKnowledge().catch(showError)}
-function drawPracticeRound(){
+function drawPracticeRound(){if(deferFeedback('practice',drawPracticeRound))return;
  const r=P.round,el=$('#content');if(r?.modality==='auditory')return drawAudioPractice();if(!P.courses.includes('PVAP1')){el.innerHTML='<p>Dieser Kurs ist derzeit nicht freigegeben.</p>';return}if(!r){el.innerHTML='<p>Wähle links deine Übungen aus.</p>';return}
  const t=r.tasks[r.position],draft=r.draft[t.key]||[],answer=richAnswer(t,t.submission?.answer||t.pending||draft),locked=!!(t.submission||t.pending),done=r.tasks.filter(t=>t.submission).length;
  let body=`<div class="practice-heading"><span>${esc((boot.presentations||[]).find(x=>x.id===t.topic)?.title||t.topic)} · ${esc(t.difficulty)}</span><span>Aufgabe ${r.position+1} / ${r.tasks.length}</span></div><h2>${esc(t.title)}</h2>${t.prompt?`<p>${esc(t.prompt)}</p>`:''}`;

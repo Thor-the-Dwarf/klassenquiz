@@ -35,12 +35,12 @@ async function preloadSlides(data,index,total,valid){
 }
 async function decodedSlide(blob,alt){const url=URL.createObjectURL(blob),img=new Image();img.alt=alt;img.src=url;try{await img.decode();return {img,url}}catch(e){URL.revokeObjectURL(url);throw e}}
 async function openPresentation(id){if(boot.role==='learner'&&P.mode!=='infographics')return;const t=(boot.presentations||[]).find(t=>t.id===id);if(!t?.ready||!t.slides)return;await capture();if(boot.role==='learner'){practiceCache();stopAudioPractice();}slidesView.topic=t;slidesView.index=0;selected=id;view='presentation';drawTabs();drawSidebar();await drawPresentation()}
-async function drawPresentation(){
+async function drawPresentation(){if(deferFeedback('presentation',drawPresentation))return;
  const t=slidesView.topic;if(!t)return;const revision=++slidesView.revision;
  const owner=auth,classId=cls.id,index=slidesView.index,oldStage=$('#slide-stage');
  $('#content').innerHTML=`<section class="presentation-view" aria-label="${esc(t.title)}"><div class="slide-stage" id="slide-stage" role="status">Folie wird geladen …</div><div class="row slide-navigation"><button data-slide-prev ${slidesView.index?'':'disabled'}>Zurück</button><span>Folie ${slidesView.index+1} / ${t.slides}</span><button data-slide-next ${slidesView.index<t.slides-1?'':'disabled'}>Weiter</button><button data-presentation-pdf class="secondary">PDF herunterladen</button>${boot.role==='host'?`<button data-host-invite ${cls?.courseGrants?.includes('PVAP1')&&catalog().some(e=>t.exercises.includes(e.id)&&e.difficulty===hostQuizDifficulty&&cls.grants?.includes(e.id))?'':'disabled'}>Klasse zum Quiz einladen</button>`:''}</div></section>`;
  if(oldStage?.querySelector('img'))$('#slide-stage').replaceWith(oldStage);
- const valid=()=>revision===slidesView.revision&&view==='presentation'&&owner===auth&&classId===cls?.id&&!!$('#slide-stage');$('#slide-stage').setAttribute('aria-busy','true');
+ const valid=()=>!feedbackLocked()&&revision===slidesView.revision&&view==='presentation'&&owner===auth&&classId===cls?.id&&!!$('#slide-stage');$('#slide-stage').setAttribute('aria-busy','true');
  try{const blob=await materialBlob({topic:t.id,slide:index});if(!valid())return;const next=await decodedSlide(blob,t.title+' – Folie '+(index+1));if(!valid()){URL.revokeObjectURL(next.url);return}const oldUrl=slidesView.url;slidesView.url=next.url;$('#slide-stage').replaceChildren(next.img);$('#slide-stage').setAttribute('aria-busy','false');if(oldUrl)URL.revokeObjectURL(oldUrl);void preloadSlides({topic:t.id},index,t.slides,valid)}catch(e){if(valid()){$('#slide-stage').textContent=e.message;$('#slide-stage').setAttribute('aria-busy','false')}}
 }
 document.addEventListener('click',event=>{const b=event.target.closest('button');if(!b)return;const d=b.dataset;if(!('presentation'in d||'slidePrev'in d||'slideNext'in d||'presentationPdf'in d))return;guarded(async()=>{
