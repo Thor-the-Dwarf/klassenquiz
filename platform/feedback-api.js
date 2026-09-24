@@ -5,18 +5,18 @@ async function feedbackRequest(action,data={},authenticated=false,blob=false){
 }
 const feedbackDrafts=new Map();let feedbackDraft=null,feedbackBusy=false,feedbackOwner=null;
 function feedbackContext(){
- if(view==='practice'&&P.round)return {kind:'round',round:P.round.id,index:P.round.position};
- if(view==='presentation'&&slidesView.topic)return slidesView.displayed?.topic===slidesView.topic.id?{...slidesView.displayed}:null;
- if(view==='discussion'&&discussion.state)return discussion.displayed?.session===discussion.state.id?{...discussion.displayed}:null;
- if(view==='quiz'&&quiz?.question)return {kind:'quiz',quiz:quiz.id,index:quiz.index};
- if(view==='exercise'&&frameInfo?.attempt&&Number.isInteger(frameInfo.index))return {kind:'exercise',exercise:frameInfo.id,attempt:frameInfo.attempt,index:frameInfo.index};
+ if(view==='practice'&&P.round?.tasks[P.round.position]&&document.querySelector('#content .practice-round,#content #audio-practice'))return {kind:'round',round:P.round.id,index:P.round.position};
+ if(view==='presentation'&&slidesView.topic&&document.querySelector('#slide-stage img'))return slidesView.displayed?.topic===slidesView.topic.id?{...slidesView.displayed}:null;
+ if(view==='discussion'&&discussion.state&&document.querySelector('#discussion-stage img'))return discussion.displayed?.session===discussion.state.id?{...discussion.displayed}:null;
+ if(view==='quiz'&&quiz?.question&&document.querySelector('#content .quiz-question'))return {kind:'quiz',quiz:quiz.id,index:quiz.index};
+ if(view==='exercise'&&document.querySelector('#exercise-frame')&&frameInfo?.attempt&&Number.isInteger(frameInfo.index))return {kind:'exercise',exercise:frameInfo.id,attempt:frameInfo.attempt,index:frameInfo.index};
  return null;
 }
 function feedbackValues(){return Object.fromEntries(['good','bad','better','personal'].map(k=>[k,document.querySelector('#feedback-'+k).value]));}
 function rememberFeedback(){if(feedbackDraft)feedbackDraft.values={...feedbackValues(),rating:document.querySelector('#feedback-rating').value};}
 function prepareFeedback(){
  const owner=auth?.token;if(owner!==feedbackOwner){feedbackDrafts.clear();feedbackDraft=null;feedbackOwner=owner;}
- const context=feedbackContext(),key=JSON.stringify(context);if(!context){feedbackDraft=null;feedbackStatus('Öffne zuerst eine Übung, Infografik oder Diskussion.');renderFeedbackFiles();return;}
+ const context=feedbackContext(),key=JSON.stringify(context);if(!context){feedbackDraft=null;feedbackStatus('');renderFeedbackFiles();return;}
  if(!feedbackDrafts.has(key))feedbackDrafts.set(key,{id:crypto.randomUUID(),token:Array.from(crypto.getRandomValues(new Uint8Array(32)),x=>x.toString(16).padStart(2,'0')).join(''),context,files:[],values:{rating:5,good:'',bad:'',better:'',personal:''}});
  feedbackDraft=feedbackDrafts.get(key);const d=feedbackDraft;
  for(const [k,v] of Object.entries(d.values))document.querySelector('#feedback-'+k).value=v;

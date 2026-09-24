@@ -7,7 +7,13 @@ function flashFeedback(){
  clearTimeout(feedbackFlashTimer);for(const el of elements){el.classList.remove('feedback-blocked');void el.offsetWidth;el.classList.add('feedback-blocked');}
  feedbackFlashTimer=setTimeout(()=>elements.forEach(el=>el.classList.remove('feedback-blocked')),700);
 }
+function syncFeedbackAvailability(){
+ const button=document.querySelector('#learner-feedback');
+ button.disabled=!feedbackLocked()&&(!document.body.classList.contains('learner-layout')||!feedbackContext());
+}
+new MutationObserver(syncFeedbackAvailability).observe(document.querySelector('#root'),{childList:true,subtree:true});
 function toggleFeedback(open){
+ if(open&&!feedbackLocked()&&!feedbackContext()){syncFeedbackAvailability();return;}
  if(feedbackBusy&&!open){flashFeedback();return;}
  if(!open)rememberFeedback();
  const panel=document.querySelector('#feedback-section'),button=document.querySelector('#learner-feedback');
@@ -29,6 +35,7 @@ function syncFeedback(){
  syncHostFeedback();
  const learner=document.body.classList.contains('learner-layout');
  document.querySelector('#learner-feedback').hidden=!learner;
+ syncFeedbackAvailability();
  if(!learner){feedbackDrafts.clear();feedbackDraft=null;feedbackPending.clear();toggleFeedback(false);document.querySelector('#feedback-form').reset();document.querySelector('#feedback-rating-value').value='5';}
 }
 document.addEventListener('click',e=>{
