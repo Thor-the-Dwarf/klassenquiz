@@ -1,115 +1,59 @@
 'use strict';
-// Synthetic prototype only. No catalog, curriculum or participant data is queried.
-const coreDemo={active:new Set(),selected:null};
-const coreDemoNodes=[
- ['PDCA-Zyklus',200,145,'Qualität','LF 1','AP2','Planen, umsetzen, überprüfen und verbessern.'],
- ['Qualitätsmanagement',355,110,'Qualität','LF 1','AP2','Qualität systematisch sichern und weiterentwickeln.'],
- ['Lastenheft',145,285,'Auftrag','LF 1','AP1','Beschreibt die Anforderungen des Auftraggebers.'],
- ['Pflichtenheft',335,275,'Auftrag','LF 2','AP1','Beschreibt, wie die Anforderungen umgesetzt werden sollen.'],
- ['SMART',235,430,'Auftrag','LF 2','AP1','Ein Schema zur Formulierung überprüfbarer Ziele.'],
- ['SLA',410,435,'Qualität','LF 2','AP2','Service Level Agreement – vereinbarte Leistungen und Servicequalität.'],
- ['CPU',580,140,'IT-Systeme','LF 2','AP1','Central Processing Unit – die zentrale Verarbeitungseinheit.'],
- ['RAM',780,125,'IT-Systeme','LF 2','AP1','Random Access Memory – der Arbeitsspeicher.'],
- ['SSD',865,275,'IT-Systeme','LF 2','AP1','Solid State Drive – ein Speicher ohne bewegliche Bauteile.'],
- ['IP-Adresse',655,290,'Netzwerke','LF 3','AP1','Eine Adresse zur Kommunikation in einem IP-Netzwerk.'],
- ['DNS',790,440,'Netzwerke','LF 3','AP2','Domain Name System – ordnet Namen unter anderem IP-Adressen zu.'],
- ['DHCP',595,465,'Netzwerke','LF 3','AP2','Dynamic Host Configuration Protocol – automatische Netzwerkkonfiguration.'],
- ['Schutzziele',455,580,'Sicherheit','LF 4','AP1','Vertraulichkeit, Integrität und Verfügbarkeit.'],
- ['Backup',685,600,'Sicherheit','LF 4','AP2','Eine Sicherungskopie zur Wiederherstellung von Daten.'],
- ['MFA',210,590,'Sicherheit','LF 4','AP2','Multi-Faktor-Authentifizierung – Anmeldung mit mehreren unterschiedlichen Faktoren.']
-].map(([title,x,y,arp,lf,exam,description],id)=>({id,title,x,y,arp,lf,exam,description}));
-const coreDemoEdges=[[0,1],[0,4],[0,5],[1,5],[2,3],[2,4],[3,6],[3,5],[4,5],[6,7],[6,8],[7,8],[6,9],[8,13],[9,10],[9,11],[10,11],[11,12],[12,13],[12,14],[14,0],[5,12]];
-const coreDemoModes=[['arp','Nach Ausbildungsrahmenplan clustern','#52e6ad'],['lf','Nach Lernfeldern clustern','#b595ff'],['exam','Nach Prüfungsteil clustern','#f1cf77']];
-function coreDemoHull(points){
- const sorted=points.slice().sort((a,b)=>a[0]-b[0]||a[1]-b[1]);
- const cross=(a,b,c)=>(b[0]-a[0])*(c[1]-a[1])-(b[1]-a[1])*(c[0]-a[0]);
- const half=items=>{const result=[];for(const p of items){while(result.length>1&&cross(result.at(-2),result.at(-1),p)<=0)result.pop();result.push(p);}return result;};
- const lower=half(sorted),upper=half(sorted.slice().reverse());return lower.slice(0,-1).concat(upper.slice(0,-1)).map(p=>p.join(',')).join(' ');
+const coreDemo={active:new Set(),selected:null,search:'',offset:0,center:null};
+const coreModes=[['arp','Nach Ausbildungsrahmenplan clustern','#52e6ad'],['lf','Nach Lernfeldern clustern','#b595ff'],['exam','Nach Prüfungsteil clustern','#f1cf77']];
+let coreGraph=null,coreRequest=0;
+new MutationObserver(()=>{if(coreGraph&&!coreGraph.root.isConnected){coreGraph.destroy();coreGraph=null;}}).observe(document.querySelector('#root'),{childList:true,subtree:true});
+const coreSymbols={binary:'M6 5h4v14H6zM16 5h2v14',network:'M12 4v7M4 19v-5h16v5M12 14v5M9 2h6v5H9z',chip:'M6 6h12v12H6zM9 9h6v6H9zM2 9h4M2 15h4M18 9h4M18 15h4M9 2v4M15 2v4M9 18v4M15 18v4',storage:'M4 4h16v16H4zM7 8h10M7 12h10M7 16h3',plug:'M8 2v6M16 2v6M6 8h12v5l-4 4v5M10 17l-4-4',shield:'M12 2l8 3v7c0 5-8 10-8 10S4 17 4 12V5zM8 12l3 3 5-6',document:'M5 2h10l4 4v16H5zM8 10h8M8 14h8M8 18h5',chart:'M3 3v18h19M7 17v-5M12 17V7M17 17V3',code:'M8 5l-6 7 6 7M16 5l6 7-6 7M14 3l-4 18'};
+function coreColor(n){if(n.percent===null)return [0.48,0.57,0.68,1];const t=n.percent/100;return t<.5?[.95,.3+t*.8,.35,1]:[.95-(t-.5)*1.5,.7+(t-.5)*.5,.4,1];}
+function coreRenderer(canvas){
+ const gl=canvas.getContext('webgl2',{alpha:true,antialias:true});if(!gl)return null;
+ const shader=(kind,src)=>{const s=gl.createShader(kind);gl.shaderSource(s,src);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw Error('Graph-Shader konnte nicht geladen werden.');return s;};
+ const program=gl.createProgram();gl.attachShader(program,shader(gl.VERTEX_SHADER,'#version 300 es\nin vec2 pos;in vec4 color;in float size;out vec4 tint;void main(){gl_Position=vec4(pos,0.,1.);gl_PointSize=size;tint=color;}'));gl.attachShader(program,shader(gl.FRAGMENT_SHADER,'#version 300 es\nprecision mediump float;in vec4 tint;uniform bool dots;out vec4 result;void main(){if(dots&&distance(gl_PointCoord,vec2(.5))>.5)discard;result=tint;}'));gl.linkProgram(program);if(!gl.getProgramParameter(program,gl.LINK_STATUS))throw Error('Graph-Renderer konnte nicht gestartet werden.');
+ const buffer=gl.createBuffer();gl.useProgram(program);gl.bindBuffer(gl.ARRAY_BUFFER,buffer);for(const [name,count,offset] of [['pos',2,0],['color',4,8],['size',1,24]]){const loc=gl.getAttribLocation(program,name);gl.enableVertexAttribArray(loc);gl.vertexAttribPointer(loc,count,gl.FLOAT,false,28,offset);}gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
+ return {draw(lines,points){gl.viewport(0,0,canvas.width,canvas.height);gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT);for(const [data,dots] of [[lines,false],[points,true]]){gl.uniform1i(gl.getUniformLocation(program,'dots'),dots?1:0);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(data),gl.DYNAMIC_DRAW);gl.drawArrays(dots?gl.POINTS:gl.LINES,0,data.length/7);}},close(){gl.deleteBuffer(buffer);gl.deleteProgram(program);gl.getExtension('WEBGL_lose_context')?.loseContext();}};
 }
-function coreDemoAreas(){return coreDemoModes.map(([key,,color],layer)=>{
- const groups=[...new Set(coreDemoNodes.map(n=>n[key]))];
- return `<g class="core-cluster-layer" data-core-layer="${key}" ${coreDemo.active.has(key)?'':'hidden'}>${groups.map((label,i)=>{
- const nodes=coreDemoNodes.filter(n=>n[key]===label),pad=30+layer*9;
- const points=nodes.flatMap(n=>Array.from({length:8},(_,j)=>[n.x+Math.cos(j*Math.PI/4)*pad,n.y+Math.sin(j*Math.PI/4)*pad]));
- const first=nodes.reduce((a,b)=>a.y<b.y?a:b);
- return `<g data-core-group="${i}"><polygon points="${coreDemoHull(points)}" fill="${color}" fill-opacity=".055" stroke="${color}" stroke-opacity=".55" stroke-width="1.5" stroke-linejoin="round" ${layer===1?'stroke-dasharray="7 4"':layer===2?'stroke-dasharray="2 5"':''}/><text x="${first.x-pad+8}" y="${first.y-pad-7}" fill="${color}" class="core-cluster-label">${key==='arp'?'ARP · ':key==='lf'?'':'Prüfung · '}${label}</text></g>`;
- }).join('')}</g>`;
-}).join('');}
-function drawHomeGraph(){
- cancelAnimationFrame(coreMotion.frame);coreMotion.points=coreLayout();
- document.querySelector('#content').innerHTML=`<section class="home-graph core-prototype" aria-labelledby="home-graph-title"><div class="home-graph-heading"><h1 id="home-graph-title">Cores</h1><span>Prototyp · Beispieldaten</span></div><div class="core-cluster-tools" aria-label="Clustering">${coreDemoModes.map(([key,label,color])=>`<button class="secondary core-cluster-toggle" data-core-mode="${key}" style="--cluster-color:${color}" aria-pressed="${coreDemo.active.has(key)}">${label}</button>`).join('')}</div><p class="core-demo-note">Cores und Zuordnungen sind Beispiele. Eine Clusterung zieht zusammengehörige Cores leicht zueinander.</p><svg class="core-canvas" viewBox="0 0 1000 690" role="group" aria-label="Core-Graph mit auswählbaren Beispielknoten"><defs><pattern id="graph-grid" width="28" height="28" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r=".8" fill="#8eabc5" opacity=".14"/></pattern></defs><rect width="1000" height="690" fill="url(#graph-grid)"/>${coreDemoAreas()}<g class="core-connections">${coreDemoEdges.map(([a,b])=>`<line data-core-edge="${a},${b}" x1="${coreDemoNodes[a].x}" y1="${coreDemoNodes[a].y}" x2="${coreDemoNodes[b].x}" y2="${coreDemoNodes[b].y}"/>`).join('')}</g>${coreDemoNodes.map(n=>`<g class="core-node" data-core-node="${n.id}" role="button" tabindex="0" aria-label="${n.title}" aria-pressed="false"><circle class="core-hit" cx="${n.x}" cy="${n.y}" r="24" fill="transparent"/><circle class="core-halo" cx="${n.x}" cy="${n.y}" r="18"/><circle class="core-dot" cx="${n.x}" cy="${n.y}" r="7"/><text x="${n.x}" y="${n.y+30}" text-anchor="middle">${n.title}</text></g>`).join('')}</svg><div class="core-demo-detail" role="status" aria-live="polite"></div></section>`;
- syncCoreDemo();paintCoreLayout(document.querySelector('.core-prototype'));
+function coreHull(points){const sorted=points.slice().sort((a,b)=>a.x-b.x||a.y-b.y),cross=(a,b,c)=>(b.x-a.x)*(c.y-a.y)-(b.y-a.y)*(c.x-a.x);const half=items=>{const result=[];for(const p of items){while(result.length>1&&cross(result.at(-2),result.at(-1),p)<=0)result.pop();result.push(p);}return result;};return half(sorted).slice(0,-1).concat(half(sorted.slice().reverse()).slice(0,-1));}
+async function drawHomeGraph(){
+ coreGraph?.destroy();const content=document.querySelector('#content');
+ content.innerHTML=`<section class="home-graph core-live"><div class="home-graph-heading"><h1>Cores</h1><span id="core-count" role="status">Wird geladen …</span></div><div class="core-cluster-tools">${coreModes.map(([key,label,color])=>`<button class="secondary core-cluster-toggle" data-core-mode="${key}" style="--cluster-color:${color}" aria-pressed="${coreDemo.active.has(key)}">${label}</button>`).join('')}</div><div class="core-search-row"><input id="core-search" type="search" placeholder="Core oder Begriff suchen" aria-label="Cores durchsuchen" value="${esc(coreDemo.search)}"><button class="secondary" id="core-overview">Übersicht</button><button class="secondary" id="core-prev" aria-label="Vorheriger Ausschnitt">‹</button><button class="secondary" id="core-next" aria-label="Nächster Ausschnitt">›</button></div><p id="core-status" class="core-demo-note"></p><div class="core-stage"><canvas class="core-webgl" tabindex="0" aria-label="Core-Graph. Pfeiltasten wählen Knoten, Eingabe öffnet Details. Ziehen verschiebt, Scrollen zoomt."></canvas><canvas class="core-labels" aria-hidden="true"></canvas><div class="core-hover" hidden></div></div><div class="core-legend"><span>● Unbearbeitet / ohne Aufgaben</span><span class="core-zero">● 0 %</span><span class="core-half">● 50 %</span><span class="core-full">● 100 %</span></div><section id="core-detail" aria-live="polite"><p>Wähle einen Core. Eine Linie bedeutet „verwendet diesen Core“.</p></section></section>`;
+ const root=content.firstElementChild;coreGraph=createCoreGraph(root);await loadCoreGraph();
 }
-function syncCoreDemo(){
- const root=document.querySelector('.core-prototype');if(!root)return;
- for(const button of root.querySelectorAll('[data-core-mode]'))button.setAttribute('aria-pressed',String(coreDemo.active.has(button.dataset.coreMode)));
- for(const layer of root.querySelectorAll('[data-core-layer]'))layer.toggleAttribute('hidden',!coreDemo.active.has(layer.dataset.coreLayer));
- const selected=coreDemoNodes.find(n=>n.id===coreDemo.selected),neighbors=new Set();
- for(const [a,b] of coreDemoEdges){if(a===selected?.id)neighbors.add(b);if(b===selected?.id)neighbors.add(a);}
- for(const node of root.querySelectorAll('[data-core-node]')){const id=Number(node.dataset.coreNode);node.setAttribute('aria-pressed',String(id===selected?.id));node.classList.toggle('core-related',neighbors.has(id));node.classList.toggle('core-muted',!!selected&&id!==selected.id&&!neighbors.has(id));}
- for(const edge of root.querySelectorAll('[data-core-edge]'))edge.classList.toggle('core-edge-active',!!selected&&edge.dataset.coreEdge.split(',').map(Number).includes(selected.id));
- const detail=root.querySelector('.core-demo-detail');detail.replaceChildren();
- if(selected){const title=document.createElement('strong');title.textContent=selected.title;const text=document.createElement('span');text.textContent=selected.description;detail.append(title,text);}else detail.textContent='Wähle einen Core, um seine Beispielinformation und Verbindungen zu sehen.';
+async function loadCoreGraph(){
+ const graph=coreGraph;if(!graph)return;const revision=++coreRequest,session=auth,classId=cls?.id;
+ try{if(boot.role==='learner')await flush();const data=await request('coreGraph',{search:coreDemo.search,offset:coreDemo.offset,center:coreDemo.center||undefined,limit:100});if(revision!==coreRequest||coreGraph!==graph||!graph.root.isConnected||auth!==session||cls?.id!==classId)return;
+ graph.set(data);if(!coreDemo.selected)document.querySelector('#core-detail').innerHTML='<p>Wähle einen Core. Eine Linie bedeutet „verwendet diesen Core“.</p>';document.querySelector('#core-count').textContent=`${data.nodes.length} von ${data.matched.toLocaleString('de-DE')} Cores`;document.querySelector('#core-prev').disabled=coreDemo.offset===0;document.querySelector('#core-next').disabled=coreDemo.offset+data.nodes.length>=data.matched;
+ if(coreDemo.selected&&data.nodes.some(n=>n.id===coreDemo.selected))await showCoreDetail(coreDemo.selected);
+ }catch(e){if(coreGraph===graph&&graph.root.isConnected){document.querySelector('#core-count').textContent='Cores nicht geladen';document.querySelector('#core-status').textContent=e.message;}}
 }
-function activateCoreDemo(target){
- const toggle=target.closest('[data-core-mode]');if(toggle){const key=toggle.dataset.coreMode;const wasActive=coreDemo.active.has(key);coreDemo.active.clear();if(!wasActive)coreDemo.active.add(key);syncCoreDemo();animateCoreLayout();return;}
- const node=target.closest('[data-core-node]');if(node){const id=Number(node.dataset.coreNode);coreDemo.selected=coreDemo.selected===id?null:id;syncCoreDemo();}
-}
-document.addEventListener('click',e=>activateCoreDemo(e.target));
-document.addEventListener('keydown',e=>{if(e.target.matches('[data-core-node]')&&['Enter',' '].includes(e.key)){e.preventDefault();activateCoreDemo(e.target);}});
-
-// Weak cluster attraction preserves the overall map; short-range repulsion keeps nodes apart.
-const coreMotion={points:[],frame:0};
-function coreLayout(){
- const key=[...coreDemo.active][0];
- if(!key)return coreDemoNodes.map(n=>({x:n.x,y:n.y,vx:0,vy:0}));
- const targets=coreDemoNodes.map(n=>{
-  const group=coreDemoNodes.filter(other=>other[key]===n[key]);
-  const center=group.reduce((c,p)=>({x:c.x+p.x/group.length,y:c.y+p.y/group.length}),{x:0,y:0});
-  const dx=(center.x-n.x)*.23,dy=(center.y-n.y)*.23,scale=Math.min(1,72/(Math.hypot(dx,dy)||1));
-  return {x:n.x+dx*scale,y:n.y+dy*scale};
- });
- const points=targets.map(p=>({...p,vx:0,vy:0}));
- for(let step=0;step<70;step++){
-  for(let i=0;i<points.length;i++)for(let j=i+1;j<points.length;j++){
-   const a=points[i],b=points[j],dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy)||1;
-   if(d<108){const force=(108-d)*.12;a.x-=dx/d*force;a.y-=dy/d*force;b.x+=dx/d*force;b.y+=dy/d*force;}
-  }
-  points.forEach((p,i)=>{p.x+=(targets[i].x-p.x)*.035;p.y+=(targets[i].y-p.y)*.035;});
+function createCoreGraph(root){
+ const canvas=root.querySelector('.core-webgl'),labels=root.querySelector('.core-labels'),ctx=labels.getContext('2d'),hover=root.querySelector('.core-hover'),stage=root.querySelector('.core-stage');let gpu;try{gpu=coreRenderer(canvas)}catch{gpu=null}const fallback=gpu?null:canvas.getContext('2d');
+ let nodes=[],edges=[],width=1,height=1,ratio=1,frame=0,hovered=null,detailRevision=0,scale=1,pan={x:0,y:0},drag=null,disposed=false;
+ const point=n=>({x:width/2+(n.x-500)*Math.min(width/1000,height/690)*scale+pan.x,y:height/2+(n.y-345)*Math.min(width/1000,height/690)*scale+pan.y});
+ function showHover(id){if(hovered===id)return;hovered=id;const n=nodes.find(n=>n.id===id);hover.hidden=!n;hover.replaceChildren();if(n){hover.innerHTML=`<svg viewBox="0 0 24 24" class="core-symbol" aria-hidden="true"><path d="${coreSymbols[n.symbol]||coreSymbols.document}"/></svg><div class="core-hover-caption"><strong>${esc(n.name)}</strong><span>${esc(n.context)}</span></div>`;}render();}
+ function render(){if(disposed)return;ctx.clearRect(0,0,width,height);const labelBoxes=[];const active=[...coreDemo.active][0],mode=coreModes.find(x=>x[0]===active),lines=[],dots=[];
+ if(active){const groups=new Map();for(const n of nodes)for(const key of n.clusters[active]||[]){if(!groups.has(key))groups.set(key,[]);groups.get(key).push(n);}for(const [name,members] of groups){const points=members.flatMap(n=>{const p=point(n);return Array.from({length:8},(_,i)=>({x:p.x+Math.cos(i*Math.PI/4)*20,y:p.y+Math.sin(i*Math.PI/4)*20}));}),hull=coreHull(points);ctx.beginPath();hull.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.closePath();ctx.fillStyle=mode[2]+'10';ctx.strokeStyle=mode[2]+'70';ctx.fill();ctx.stroke();const first=hull.reduce((a,b)=>a.y<b.y?a:b);ctx.fillStyle=mode[2];ctx.font='12px system-ui';ctx.fillText(name,first.x,first.y-5);}}
+ const vertex=(p,color,size)=>[p.x/width*2-1,1-p.y/height*2,...color,size*ratio];
+ if(fallback){fallback.clearRect(0,0,width,height);}
+ for(const edge of edges){const a=nodes.find(n=>n.id===edge.source),b=nodes.find(n=>n.id===edge.target);if(!a||!b)continue;const from=point(a),to=point(b),lit=[a.id,b.id].includes(coreDemo.selected),color=lit?[.27,.84,1,.85]:[.55,.66,.8,.22];lines.push(...vertex(from,color,1),...vertex(to,color,1));if(fallback){fallback.strokeStyle=lit?'#46d7ff':'#7798bc55';fallback.beginPath();fallback.moveTo(from.x,from.y);fallback.lineTo(to.x,to.y);fallback.stroke();}}
+ for(const n of nodes){const p=point(n);if(p.x<-30||p.y<-30||p.x>width+30||p.y>height+30)continue;const color=coreColor(n),size=n.id===hovered?28:n.id===coreDemo.selected?17:n.kind==='term'?13:9;dots.push(...vertex(p,color,size));if(fallback){fallback.fillStyle=`rgb(${color.slice(0,3).map(v=>Math.round(v*255)).join(',')})`;fallback.beginPath();fallback.arc(p.x,p.y,size/2,0,Math.PI*2);fallback.fill();}if(nodes.length<=30||n.kind==='term'&&scale>.75||scale>1.6||n.id===coreDemo.selected){ctx.font='12px system-ui';ctx.textAlign='center';ctx.lineWidth=4;ctx.strokeStyle='#101625';const name=n.name.length>32?n.name.slice(0,31)+'…':n.name;const tw=ctx.measureText(name).width,box={x:p.x-tw/2-3,y:p.y+10,w:tw+6,h:17},forced=n.id===coreDemo.selected||n.id===hovered;if(forced||labelBoxes.length<(scale>1.6?80:28)&&!labelBoxes.some(b=>box.x<b.x+b.w&&box.x+box.w>b.x&&box.y<b.y+b.h&&box.y+box.h>b.y)){labelBoxes.push(box);ctx.strokeText(name,p.x,p.y+23);ctx.fillStyle='#dae8f7';ctx.fillText(name,p.x,p.y+23);}}}
+ gpu?.draw(lines,dots);if(hovered){const n=nodes.find(n=>n.id===hovered);if(n){const p=point(n);hover.style.left=p.x+'px';hover.style.top=p.y+'px';const caption=hover.querySelector('.core-hover-caption');caption.style.transform=`translate(${Math.max(-120,Math.min(0,width-p.x-250))}px, 0)`;}}
  }
- return points;
-}
-function paintCoreLayout(root){
- const points=coreMotion.points;
- for(const el of root.querySelectorAll('[data-core-node]')){const id=Number(el.dataset.coreNode),p=points[id],base=coreDemoNodes[id];el.setAttribute('transform',`translate(${p.x-base.x} ${p.y-base.y})`);}
- for(const line of root.querySelectorAll('[data-core-edge]')){const [a,b]=line.dataset.coreEdge.split(',').map(id=>points[Number(id)]);for(const [key,value] of Object.entries({x1:a.x,y1:a.y,x2:b.x,y2:b.y}))line.setAttribute(key,value);}
- for(const [layerIndex,[key]] of coreDemoModes.entries()){
-  const layer=root.querySelector(`[data-core-layer="${key}"]`);if(layer.hasAttribute('hidden'))continue;
-  const labels=[...new Set(coreDemoNodes.map(n=>n[key]))],pad=30+layerIndex*9;
-  for(const el of layer.querySelectorAll('[data-core-group]')){
-   const label=labels[Number(el.dataset.coreGroup)],members=coreDemoNodes.filter(n=>n[key]===label).map(n=>points[n.id]);
-   const hull=members.flatMap(p=>Array.from({length:8},(_,j)=>[p.x+Math.cos(j*Math.PI/4)*pad,p.y+Math.sin(j*Math.PI/4)*pad]));
-   el.querySelector('polygon').setAttribute('points',coreDemoHull(hull));
-   const first=members.reduce((a,b)=>a.y<b.y?a:b),text=el.querySelector('text');text.setAttribute('x',first.x-pad+8);text.setAttribute('y',first.y-pad-7);
-  }
+ function targets(){const active=[...coreDemo.active][0],groups=new Map();for(const n of nodes){const group=n.clusters[active]?.[0];if(group){if(!groups.has(group))groups.set(group,[]);groups.get(group).push(n);}}
+ nodes.forEach(n=>{const members=groups.get(n.clusters[active]?.[0]);let dx=0,dy=0;if(members){dx=(members.reduce((v,p)=>v+p.baseX,0)/members.length-n.baseX)*.23;dy=(members.reduce((v,p)=>v+p.baseY,0)/members.length-n.baseY)*.23;const cap=Math.min(1,70/(Math.hypot(dx,dy)||1));dx*=cap;dy*=cap;}n.tx=n.baseX+dx;n.ty=n.baseY+dy;});
+ root.querySelector('#core-status').textContent=active&&nodes.some(n=>!n.clusters[active]?.length)?'Für noch nicht fachlich zugeordnete Cores wird keine Cluster-Zugehörigkeit behauptet.':'Aus Aufgaben extrahiert · Automatische Aussagen können noch eine fachliche Prüfung benötigen.';
  }
+ function animate(){cancelAnimationFrame(frame);targets();if(matchMedia('(prefers-reduced-motion: reduce)').matches){nodes.forEach(n=>{n.x=n.tx;n.y=n.ty});render();return;}let last=performance.now(),elapsed=0;const tick=now=>{if(disposed||!root.isConnected)return;const dt=Math.min(.032,(now-last)/1000);last=now;elapsed+=dt;nodes.forEach(n=>{n.vx+=(65*(n.tx-n.x)-15*n.vx)*dt;n.vy+=(65*(n.ty-n.y)-15*n.vy)*dt;n.x+=n.vx*dt;n.y+=n.vy*dt;});if(elapsed>2.4)nodes.forEach(n=>{n.x=n.tx;n.y=n.ty;n.vx=n.vy=0;});render();if(elapsed<=2.4)frame=requestAnimationFrame(tick);};frame=requestAnimationFrame(tick);}
+ function resize(){const r=stage.getBoundingClientRect();width=r.width;height=r.height;ratio=Math.min(devicePixelRatio||1,2);for(const c of [canvas,labels]){c.width=Math.round(width*ratio);c.height=Math.round(height*ratio);}ctx.setTransform(ratio,0,0,ratio,0,0);fallback?.setTransform(ratio,0,0,ratio,0,0);render();}
+ const observer=new ResizeObserver(resize);observer.observe(stage);
+ const hit=e=>{const r=canvas.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;return nodes.filter(n=>{const p=point(n);return Math.hypot(p.x-x,p.y-y)<18}).sort((a,b)=>Math.hypot(point(a).x-x,point(a).y-y)-Math.hypot(point(b).x-x,point(b).y-y))[0];};
+ canvas.addEventListener('pointermove',e=>{if(drag){pan.x=drag.pan.x+e.clientX-drag.x;pan.y=drag.pan.y+e.clientY-drag.y;drag.moved=Math.hypot(e.clientX-drag.x,e.clientY-drag.y)>5;render();}else showHover(hit(e)?.id||null);});canvas.addEventListener('pointerleave',()=>{if(!drag)showHover(null)});
+ canvas.addEventListener('pointerdown',e=>{drag={x:e.clientX,y:e.clientY,pan:{...pan},moved:false};canvas.setPointerCapture(e.pointerId);});canvas.addEventListener('pointerup',e=>{const moved=drag?.moved;drag=null;canvas.releasePointerCapture(e.pointerId);if(!moved){const n=hit(e);if(n){coreDemo.selected=n.id;showHover(n.id);void showCoreDetail(n.id);}else{coreDemo.selected=null;showHover(null);}render();}});canvas.addEventListener('pointercancel',()=>{drag=null;showHover(null)});
+ canvas.addEventListener('wheel',e=>{e.preventDefault();scale=Math.max(.5,Math.min(5,scale*Math.exp(-e.deltaY*.001)));render();},{passive:false});
+ canvas.addEventListener('keydown',e=>{if(!nodes.length)return;if(['ArrowRight','ArrowDown','ArrowLeft','ArrowUp'].includes(e.key)){e.preventDefault();const index=nodes.findIndex(n=>n.id===hovered),step=['ArrowRight','ArrowDown'].includes(e.key)?1:-1;showHover(nodes[(index+step+nodes.length)%nodes.length].id);}if(e.key==='Enter'&&hovered){coreDemo.selected=hovered;void showCoreDetail(hovered);render();}if(e.key==='Escape')showHover(null);});canvas.addEventListener('blur',()=>showHover(null));
+ return {root,set(data){hovered=null;hover.hidden=true;nodes=data.nodes.map((n,i)=>{const angle=i*2.39996323,r=Math.sqrt((i+.5)/data.nodes.length);return {...n,baseX:500+Math.cos(angle)*r*410,baseY:345+Math.sin(angle)*r*265,x:500+Math.cos(angle)*r*410,y:345+Math.sin(angle)*r*265,vx:0,vy:0};});edges=data.edges;targets();nodes.forEach(n=>{n.x=n.tx;n.y=n.ty});resize();},animate,render,destroy(){disposed=true;coreRequest++;cancelAnimationFrame(frame);observer.disconnect();gpu?.close();},nextDetail(){return ++detailRevision},isDetail(v){return v===detailRevision}};
 }
-function animateCoreLayout(){
- cancelAnimationFrame(coreMotion.frame);
- const root=document.querySelector('.core-prototype');if(!root)return;
- const target=coreLayout();
- if(matchMedia('(prefers-reduced-motion: reduce)').matches){coreMotion.points=target;paintCoreLayout(root);return;}
- let previous=performance.now(),elapsed=0;
- function tick(now){
-  if(!root.isConnected)return;
-  const dt=Math.min((now-previous)/1000,.032);previous=now;elapsed+=dt;let energy=0;
-  coreMotion.points.forEach((p,i)=>{
-   p.vx+=(65*(target[i].x-p.x)-15*p.vx)*dt;p.vy+=(65*(target[i].y-p.y)-15*p.vy)*dt;
-   p.x+=p.vx*dt;p.y+=p.vy*dt;energy+=Math.abs(target[i].x-p.x)+Math.abs(target[i].y-p.y)+Math.abs(p.vx)+Math.abs(p.vy);
-  });
-  if(energy<.2||elapsed>2.4)coreMotion.points=target;
-  paintCoreLayout(root);
-  if(energy>=.2&&elapsed<=2.4)coreMotion.frame=requestAnimationFrame(tick);
- }
- paintCoreLayout(root);coreMotion.frame=requestAnimationFrame(tick);
-}
+async function showCoreDetail(id){const graph=coreGraph,revision=graph.nextDetail();try{const result=await request('coreDetail',{core:id});if(graph!==coreGraph||!graph.root.isConnected||!graph.isDetail(revision))return;const c=result.core;document.querySelector('#core-detail').innerHTML=`<h2>${esc(c.name)}</h2><p>${esc(c.statement)}</p><p class="muted">${esc(c.context)} · ${c.review==='editorial'?'Begriffsdefinition':c.review==='context'?'Kontextabhängige Extraktion · Prüfung empfohlen':'Automatisch extrahiert'}</p><p>${boot.role==='learner'?c.total?`${c.percent===null?'Noch unbearbeitet':c.percent+' %'} · ${c.correct} richtig · ${c.wrong} falsch · ${c.total} verknüpfte Aufgaben`:'Noch keine direkt zugeordneten Prüfaufgaben.':'Kursleiteransicht · '+c.total+' verknüpfte Aufgaben'}</p><div class="row"><button class="secondary" data-core-neighbors="${esc(id)}">Verbindungen ansehen</button>${boot.role==='learner'&&c.total?`<button data-core-practice="visual" data-core-id="${esc(id)}">Visuell üben</button><button data-core-practice="auditory" data-core-id="${esc(id)}">Auditiv üben</button>${c.wrong?`<button data-core-practice="visual" data-core-id="${esc(id)}" data-core-wrong>Falsche visuelle Aufgaben</button><button data-core-practice="auditory" data-core-id="${esc(id)}" data-core-wrong>Falsche Audioaufgaben</button>`:''}`:''}</div><details><summary>Verknüpfte Aufgaben (${result.questionCount})</summary>${result.questions.map(q=>`<p>${esc(q.title)}<small>${q.status==='correct'?'Richtig':q.status==='wrong'?'Falsch':q.status==='unanswered'?'Unbearbeitet':''} · ${esc([...new Set(q.sources.map(s=>s.title+' · '+(s.modality==='auditory'?'auditiv':'visuell')))].join(' / '))}</small></p>`).join('')}${result.questionCount>result.questions.length?'<p>Die ersten 100 Aufgaben werden angezeigt.</p>':''}</details>`;graph.render();}catch(e){showError(e);}}
+async function corePractice(id,mode,wrong){if(boot.role!=='learner')return;await capture();practiceCache();await flush();if(queue.length)throw Error('Bitte zuerst die vorgemerkten Antworten übertragen lassen.');const data=await request('practiceTopics',{modality:mode});const round=await request('roundCreate',{topics:data.topics.map(t=>t.id),modality:mode,difficulty:'tough',coreId:id,retryWrong:wrong,requestId:crypto.randomUUID()});stopAudioPractice();P.round=round;P.active=round.id;P.mode=mode;P.choosing=false;practiceCache();await navigate('practice');}
+let coreSearchTimer;
+document.addEventListener('input',e=>{if(e.target.id!=='core-search')return;clearTimeout(coreSearchTimer);coreDemo.search=e.target.value;coreDemo.offset=0;coreDemo.center=null;coreDemo.selected=null;coreSearchTimer=setTimeout(loadCoreGraph,250);});
+document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b||b.disabled)return;if(b.dataset.coreMode){const key=b.dataset.coreMode,active=coreDemo.active.has(key);coreDemo.active.clear();if(!active)coreDemo.active.add(key);document.querySelectorAll('[data-core-mode]').forEach(el=>el.setAttribute('aria-pressed',String(coreDemo.active.has(el.dataset.coreMode))));coreGraph?.animate();}else if(b.dataset.coreNeighbors){coreDemo.center=b.dataset.coreNeighbors;coreDemo.selected=null;coreDemo.offset=0;void loadCoreGraph();}else if(['core-prev','core-next','core-overview'].includes(b.id)){if(b.id==='core-overview'){coreDemo.center=null;coreDemo.selected=null;coreDemo.search='';coreDemo.offset=0;document.querySelector('#core-search').value='';}else{coreDemo.offset=Math.max(0,coreDemo.offset+(b.id==='core-next'?100:-100));coreDemo.selected=null;}void loadCoreGraph();}else if(b.dataset.corePractice)void guarded(()=>corePractice(b.dataset.coreId,b.dataset.corePractice,b.hasAttribute('data-core-wrong')),b);});
