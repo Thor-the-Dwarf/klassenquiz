@@ -34,7 +34,7 @@ async function preloadSlides(data,index,total,valid){
  }
 }
 async function decodedSlide(blob,alt){const url=URL.createObjectURL(blob),img=new Image();img.alt=alt;img.src=url;try{await img.decode();return {img,url}}catch(e){URL.revokeObjectURL(url);throw e}}
-async function openPresentation(id){if(boot.role==='learner'&&P.mode!=='infographics')return;const t=(boot.presentations||[]).find(t=>t.id===id);if(!t?.ready||!t.slides)return;await capture();if(boot.role==='learner'){practiceCache();stopAudioPractice();}slidesView.topic=t;slidesView.index=0;selected=id;view='presentation';drawTabs();drawSidebar();await drawPresentation()}
+async function openPresentation(id){if(boot.role==='learner'&&P.mode!=='infographics')return;const t=(boot.presentations||[]).find(t=>t.id===id);if(!t?.ready||!t.slides)return;await capture();if(boot.role==='learner'){practiceCache();stopAudioPractice();}slidesView.topic=t;slidesView.index=boot.role==='host'?(hostNavigation.positions.get(id)||0):0;selected=id;view='presentation';drawTabs();drawSidebar();await drawPresentation()}
 async function drawPresentation(){if(deferFeedback('presentation',drawPresentation))return;
  const t=slidesView.topic;if(!t)return;const revision=++slidesView.revision;
  const owner=auth,classId=cls.id,index=slidesView.index,oldStage=$('#slide-stage');

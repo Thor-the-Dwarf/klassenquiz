@@ -27,11 +27,11 @@ function closeHostFeedback(returnHome=false){
  hostFeedbackRevision++;if(hostFeedbackUrl){URL.revokeObjectURL(hostFeedbackUrl);hostFeedbackUrl=null;}
  document.body.classList.remove('host-feedback-open','host-feedback-archive-open');document.querySelector('#host-feedback-section').hidden=true;
  document.querySelector('#host-feedback-list').hidden=true;document.querySelector('#host-feedback-button').setAttribute('aria-expanded','false');
- if(returnHome&&boot?.role==='host')void navigate('home').catch(showError);
+ if(returnHome&&boot?.role==='host')void restoreHostContent().catch(showError);
 }
 async function openHostFeedback(id){
  if(boot?.role!=='host')return;const f=hostFeedbackExamples.find(x=>x.id===id);if(!f)return;
- await capture();closeHostFeedback(false);const revision=++hostFeedbackRevision;
+ await capture();rememberHostContent();hostNavigation.panel='feedback';closeHostFeedback(false);const revision=++hostFeedbackRevision;
  view='host-feedback';selected=f.topic;frameInfo=null;drawTabs();drawSidebar();
  document.body.classList.add('host-feedback-open');const panel=document.querySelector('#host-feedback-section');panel.hidden=false;
  panel.innerHTML=`<div class="feedback-heading"><div><h2>Feedback</h2><small>Beispielfeedback</small></div><button id="host-feedback-close" class="secondary" aria-label="Feedback schließen">×</button></div><p class="feedback-context">${esc(f.path)}</p><div class="feedback-score"><strong>${f.rating} / 10</strong><meter min="1" max="10" value="${f.rating}" aria-label="Hilfreich: ${f.rating} von 10"></meter><div class="feedback-scale"><span>1 · Nicht hilfreich</span><span>10 · Hilfreich</span></div></div><h3>Ist-Situation</h3><div class="feedback-current"><div><h4>Was ist gut daran?</h4><p>${esc(f.good)}</p></div><div><h4>Was ist schlecht daran?</h4><p>${esc(f.bad)}</p></div></div><h3>Soll-Situation:</h3><h4>Wie kann man es besser machen?</h4><p>${esc(f.better)}</p><h3>Persönlicher Kommentar</h3><p>${esc(f.comment)}</p><h3>Anhänge</h3><p class="muted">Keine Anhänge</p>`;
@@ -62,7 +62,7 @@ function archiveExampleFeedback(id){
  drawHostFeedbackList();
 }
 async function openFeedbackArchive(){
- if(boot?.role!=='host')return;await capture();closeHostFeedback(false);view='feedback-archive';frameInfo=null;drawTabs();drawSidebar();document.body.classList.add('host-feedback-archive-open');
+ if(boot?.role!=='host')return;await capture();rememberHostContent();hostNavigation.panel='feedback';closeHostFeedback(false);view='feedback-archive';frameInfo=null;drawTabs();drawSidebar();document.body.classList.add('host-feedback-archive-open');
  const archived=hostFeedbackArchived(),tree={children:new Map(),items:[]};
  for(const f of hostFeedbackExamples){let node=tree;for(const title of f.path.split(' | ').reverse()){if(!node.children.has(title))node.children.set(title,{title,children:new Map(),items:[]});node=node.children.get(title);if(archived.has(f.id))node.items.push(f);}}
  function metric(node){const n=node.items.length,avg=n?node.items.reduce((sum,f)=>sum+f.rating,0)/n:0;return `<span class="archive-metric"><span class="archive-bar" role="meter" aria-label="Durchschnittliche Bewertung" aria-valuemin="0" aria-valuemax="10" aria-valuenow="${avg.toFixed(1)}"><span style="width:${avg*10}%"></span></span><span>${n?avg.toLocaleString('de-DE',{maximumFractionDigits:1})+' / 10':'– / 10'}</span><small>${n} ${n===1?'Feedback':'Feedbacks'}</small></span>`;}
@@ -72,7 +72,7 @@ async function openFeedbackArchive(){
 
 function feedbackWeekLabel(value){const start=new Date(value),end=new Date(value+6*86400000);return `Woche ${start.toLocaleDateString('de-DE',{timeZone:'UTC'})} – ${end.toLocaleDateString('de-DE',{timeZone:'UTC'})}`;}
 async function openRealFeedback(id){
- if(boot?.role!=='host')return;await capture();stopAudioPractice();closeHostFeedback(false);const revision=++hostFeedbackRevision,session=auth;
+ if(boot?.role!=='host')return;await capture();rememberHostContent();hostNavigation.panel='feedback';stopAudioPractice();closeHostFeedback(false);const revision=++hostFeedbackRevision,session=auth;
  const f=await feedbackRequest('read',{id},true);if(auth!==session||revision!==hostFeedbackRevision)return;
  const snap=f.snapshot;view='host-feedback';selected=snap.topic;frameInfo=null;drawTabs();drawSidebar();document.body.classList.add('host-feedback-open');
  const panel=$('#host-feedback-section');panel.hidden=false;
