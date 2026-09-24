@@ -22,6 +22,7 @@ function toggleFeedback(open){
 
 }
 function syncFeedback(){
+ syncHostFeedback();
  const learner=document.body.classList.contains('learner-layout');
  document.querySelector('#learner-feedback').hidden=!learner;
  if(!learner){feedbackPending.clear();toggleFeedback(false);document.querySelector('#feedback-form').reset();document.querySelector('#feedback-rating-value').value='5';}
