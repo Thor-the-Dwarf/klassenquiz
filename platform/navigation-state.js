@@ -18,7 +18,7 @@ async function restoreNavigation(){
  const saved=storage.get(navigationKey());
  try{
   if(!saved){coreDemo.active.clear();coreDemo.selected=null;await drawView();return;}
-  coreDemo.active=new Set((saved.coreGraph?.active||[]).filter(k=>['arp','lf','exam'].includes(k)));coreDemo.selected=saved.coreGraph?.selected??null;
+  coreDemo.active=new Set((saved.coreGraph?.active||[]).filter(k=>['arp','lf','exam'].includes(k)).slice(-1));coreDemo.selected=saved.coreGraph?.selected??null;
   expanded.clear();for(const entry of saved.expanded||[])expanded.set(...entry);
   selected=saved.selected;chartMode=saved.chartMode||'latest';chartDifficulty=saved.chartDifficulty||'easy';chartSelection.clear();for(const id of saved.chartSelection||[])chartSelection.add(id);
   Object.assign(hostNavigation,{panel:saved.host?.panel||null,base:saved.host?.base||null,positions:new Map(saved.host?.positions||[])});
