@@ -1,18 +1,26 @@
 'use strict';
 const P={mode:null,knowledge:false,knowledgeData:null,knowledgeRevision:0,courses:[],topics:[],selection:new Set(),difficulty:'tough',choosing:false,round:null,active:null};
+const practiceTopicLimit=3;
+let practiceToastTimer;
+function practiceLimitToast(){
+ let toast=document.getElementById('practice-limit-toast');
+ if(!toast){toast=document.createElement('div');toast.id='practice-limit-toast';toast.className='practice-toast';toast.setAttribute('role','status');toast.setAttribute('aria-live','polite');document.body.append(toast)}
+ clearTimeout(practiceToastTimer);toast.textContent='Maximal 3 Themen auswählen';toast.classList.add('visible');
+ practiceToastTimer=setTimeout(()=>toast.classList.remove('visible'),2600);
+}
 const practiceLevels=['easy','normal','tough'];
 const practiceKey=id=>'lp-round-'+boot.me.id+'-'+id;
 async function practiceInit(){const data=await request('practiceTopics',{modality:P.mode==='auditory'?'auditory':'visual'});P.topics=data.topics;P.courses=data.courses||[];P.active=P.courses.length?(data.active?.id||null):null;P.round=null;P.selection.clear();P.choosing=false;P.mode=null;P.knowledge=false;P.knowledgeData=null}
 function practiceEffective(t){let i=Math.min(t.unlocked,2);while(i>=0&&!t.available.includes(practiceLevels[i]))i--;return i<0?null:practiceLevels[i]}
 function drawPracticeSidebar(){
  const side=$('#sidebar');side.closest('.shell')?.classList.toggle('practice-browsing',view==='practice'&&(P.choosing||P.mode==='infographics'));side.classList.toggle('practice-selecting',P.choosing);
- const topics=P.topics;for(const id of P.selection){const t=topics.find(t=>t.id===id);if(!t||!practiceEffective(t))P.selection.delete(id)}
+ const topics=P.topics;for(const id of P.selection){const t=topics.find(t=>t.id===id);if(!t||!practiceEffective(t)||[...P.selection].indexOf(id)>=practiceTopicLimit)P.selection.delete(id)}
  for(const [id,mode] of [['learner-practice','visual'],['learner-auditory','auditory'],['learner-infographics','infographics']]){const button=$('#'+id);button.className=P.mode===mode?'active':'secondary';button.setAttribute('aria-pressed',String(P.mode===mode));}
  if(!P.mode||(!P.choosing&&P.mode!=='infographics')){side.innerHTML='';return}
  let html='';
  if(!P.courses.length){side.innerHTML=html+'<p class="muted">Noch keine Kurse freigegeben.</p>';return}
  html+=`<details ${P.choosing?'open':''}><summary>PVAP1</summary>`;if(!topics.length&&!(boot.presentations||[]).length){side.innerHTML=html+['BWL','IT','Mathematik','Software'].map(folder=>`<details><summary>${folder}</summary><p class="muted">Noch keine Übungen freigegeben.</p></details>`).join('')+'</details>';return}
- html+=P.choosing?'<div class="practice-tools"><button data-practice-all>Alle</button></div>':'';
+ html+=P.choosing?'<div class="practice-tools"><button data-practice-random>Zufällig 3 auswählen</button></div>':'';
  const entries=P.choosing?topics:[...(boot.presentations||[]).map(t=>({...t,...topics.find(x=>x.id===t.id),label:t.title,presentation:true})),...topics.filter(t=>!(boot.presentations||[]).some(x=>x.id===t.id))];
  for(const [folder,items] of Map.groupBy(entries,t=>t.folder)){html+=`<details ${P.choosing?'open':''}><summary>${esc(folder)}</summary><div class="folder">`;for(const t of items){if(t.presentation&&!P.choosing){html+=`<div class="treefile ${view==='presentation'&&selected===t.id?'active':''}"><span><button data-presentation="${esc(t.id)}" ${t.slides?'':'disabled'} aria-current="${view==='presentation'&&selected===t.id?'true':'false'}">${esc(t.title)}</button>${t.slides?'':'<small>Noch keine fertige Präsentation</small>'}${P.knowledge?knowledgeBar(t):''}</span></div>`;continue}if(t.presentation&&!t.available){html+=`<div class="treefile"><span>${esc(t.title)}<small>Noch keine Übungen</small></span></div>`;continue}const effective=practiceEffective(t);html+=`<${P.choosing?'label':'div'} class="treefile practice-topic">${P.choosing?`<input type="checkbox" data-practice-topic="${esc(t.id)}" aria-label="${esc(t.label)} auswählen" ${P.selection.has(t.id)?'checked':''} ${effective?'':'disabled'}>`:''}<span>${esc(t.label)}${P.choosing&&!effective?'<small>Keine passende Freigabe</small>':''}${P.knowledge?knowledgeBar(t):''}</span></${P.choosing?'label':'div'}>`}html+='</div></details>'}
  side.innerHTML=html+'</details>'+(P.choosing?`<div class="practice-start"><button data-practice-start ${P.selection.size?'':'disabled'}>Start</button>${practiceResumeButtons(P.mode)}</div>`:'');
@@ -51,7 +59,7 @@ async function practiceOpen(id){
  practiceCache();stopAudioPractice();$('#learner-menu-dialog')?.close();P.round=round;P.active=id;P.mode=round.modality||'visual';P.choosing=false;view='practice';practiceCache();drawSidebar();drawTabs();drawPracticeRound();
 }
 async function practiceStart(){
- if(!['visual','auditory'].includes(P.mode))return;practiceCache();await flush();if(queue.length)throw Error('Bitte erst die vorgemerkten Antworten speichern lassen.');if(!P.selection.size)return;
+ if(!['visual','auditory'].includes(P.mode))return;practiceCache();await flush();if(queue.length)throw Error('Bitte erst die vorgemerkten Antworten speichern lassen.');if(!P.selection.size)return;if(P.selection.size>practiceTopicLimit){practiceLimitToast();return;}
  const mode=P.mode,requestId=storage.get('lp-round-create-'+boot.me.id+'-'+mode)||crypto.randomUUID();storage.set('lp-round-create-'+boot.me.id+'-'+mode,requestId);
  let round;try{round=await request('roundCreate',{topics:[...P.selection],modality:mode,difficulty:'tough',requestId});storage.set('lp-round-create-'+boot.me.id+'-'+mode,null)}catch(e){if(e.status&&e.status<500)storage.set('lp-round-create-'+boot.me.id+'-'+mode,null);throw e}
  practiceCache();stopAudioPractice();P.round=round;P.active=round.id;P.mode=mode;P.choosing=false;practiceCache();view='practice';drawSidebar();drawTabs();drawPracticeRound();
@@ -73,7 +81,7 @@ function drawPracticeRound(){if(deferFeedback('practice',drawPracticeRound))retu
 }
 document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const d=b.dataset;if(!Object.keys(d).some(k=>k.startsWith('practice')))return;guarded(async()=>{
  if('practiceKnowledge'in d){P.knowledge=!P.knowledge;b.className=P.knowledge?'active':'secondary';b.setAttribute('aria-pressed',String(P.knowledge));drawSidebar();if(P.knowledge)await refreshKnowledge();return}
- if('practiceInfographics'in d)return practiceSelect('infographics');if('practiceAuditory'in d)return practiceSelect('auditory');if('practiceSelect'in d)return practiceSelect();if('practiceAll'in d){const items=P.topics.filter(practiceEffective),all=items.every(t=>P.selection.has(t.id));items.forEach(t=>all?P.selection.delete(t.id):P.selection.add(t.id));drawSidebar()}
+ if('practiceInfographics'in d)return practiceSelect('infographics');if('practiceAuditory'in d)return practiceSelect('auditory');if('practiceSelect'in d)return practiceSelect();if('practiceRandom'in d){const items=P.topics.filter(practiceEffective);for(let i=items.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[items[i],items[j]]=[items[j],items[i]]}P.selection=new Set(items.slice(0,practiceTopicLimit).map(t=>t.id));drawSidebar()}
  if('practiceStart'in d)return practiceStart();if('practiceResume'in d)return practiceOpen(d.practiceResume||P.active);
  if('practiceNew'in d){practiceCache();const data=await request('practiceTopics',{modality:P.mode==='auditory'?'auditory':'visual'});P.topics=data.topics;P.courses=data.courses||[];P.mode=P.round?.modality||'visual';P.choosing=true;view='home';drawSidebar();drawTabs();drawPracticeHome()}
  const r=P.round;if(!r)return;const t=r.tasks[r.position];
@@ -82,7 +90,7 @@ document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)r
  if('practiceNext'in d&&(t.submission||t.pending)&&r.position<r.tasks.length-1){r.position++;practiceSave();drawPracticeRound()}
  if('practicePrev'in d&&r.position){r.position--;practiceSave();drawPracticeRound()}
  },b)});
-document.addEventListener('change',e=>{const el=e.target;if(el.dataset.practiceTopic){el.checked?P.selection.add(el.dataset.practiceTopic):P.selection.delete(el.dataset.practiceTopic);drawSidebar()}if(el.dataset.practiceField!==undefined&&P.round){const t=P.round.tasks[P.round.position];if(t.submission||t.pending)return;const answer=richAnswer(t,P.round.draft[t.key]||Array(t.fields.length).fill(''));answer[Number(el.dataset.practiceField)]=el.value;P.round.draft[t.key]=answer;practiceSave()}});
+document.addEventListener('change',e=>{const el=e.target;if(el.dataset.practiceTopic){if(el.checked&&!P.selection.has(el.dataset.practiceTopic)&&P.selection.size>=practiceTopicLimit){el.checked=false;practiceLimitToast();return}el.checked?P.selection.add(el.dataset.practiceTopic):P.selection.delete(el.dataset.practiceTopic);drawSidebar()}if(el.dataset.practiceField!==undefined&&P.round){const t=P.round.tasks[P.round.position];if(t.submission||t.pending)return;const answer=richAnswer(t,P.round.draft[t.key]||Array(t.fields.length).fill(''));answer[Number(el.dataset.practiceField)]=el.value;P.round.draft[t.key]=answer;practiceSave()}});
 
 function practiceAnswerComplete(t,answer){const complete=richComplete(t,answer);return complete===null?!!answer.length&&(t.kind==='choice'||answer.length===t.fields.length&&answer.every(Boolean))&&(t.kind!=='order'||new Set(answer).size===answer.length):complete;}
 function updatePracticeControls(){if(view!=='practice'||!P.round)return;const t=P.round.tasks[P.round.position],b=$('[data-practice-answer]');if(b)b.disabled=!!(t.submission||t.pending)||!practiceAnswerComplete(t,richAnswer(t,P.round.draft[t.key]||[]));}
