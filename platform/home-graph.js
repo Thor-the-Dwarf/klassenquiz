@@ -69,16 +69,36 @@ function createCoreGraph(root){
   n.titleLines.forEach((line,i)=>{ctx.strokeText(line,p.x,y+i*15*scale);ctx.fillText(line,p.x,y+i*15*scale);});
   labelBoxes.push({id:n.id,x:p.x-n.titleWidth*scale/2,y,w:n.titleWidth*scale,h});
  }
- function groupHull(members){
-  const points=[],scale=camera().zoom/titleZoom,padding=18*scale;
-  for(const n of members){const p=point(n),r=radius(n)+padding;
-   for(let i=0;i<16;i++){const a=i*Math.PI/8;points.push({x:p.x+Math.cos(a)*r,y:p.y+Math.sin(a)*r})}
-   const w=n.titleWidth*scale/2+padding,top=p.y-radius(n)-(n.titleLines.length*15+10)*scale-padding;
-   points.push({x:p.x-w,y:top},{x:p.x+w,y:top});
+ let regionKey='',regions=new Map();
+ function groupRegion(name,members){
+  if(regionKey!==layoutKey){regionKey=layoutKey;regions.clear()}
+  const key=name+':'+members.map(n=>n.id).join(',');if(regions.has(key))return regions.get(key);
+  const scale=1/(unit*titleZoom),step=6*scale,padding=16*scale,ids=new Set(members.map(n=>n.id));
+  const rect=n=>{const r=n.id===coreDemo.selectedCluster?136:baseRadius,w=Math.max(r,n.titleWidth*scale/2),top=r+(n.titleLines.length*15+10)*scale;return {x:n.lx-w,y:n.ly-top,w:w*2,h:top+r}};
+  const memberRects=members.map(rect),foreign=nodes.filter(n=>!ids.has(n.id)).map(rect);
+  const distance=(x,y,b)=>Math.hypot(Math.max(b.x-x,0,x-b.x-b.w),Math.max(b.y-y,0,y-b.y-b.h));
+  // A minimal connection tree avoids filling the broad convex envelope between members.
+  const links=[],joined=new Set([0]);while(joined.size<members.length){let best=null;for(const i of joined)for(let j=0;j<members.length;j++)if(!joined.has(j)){const a=members[i],b=members[j],d=Math.hypot(a.lx-b.lx,a.ly-b.ly);if(!best||d<best.d)best={a,b,j,d}}links.push(best);joined.add(best.j)}
+  const segmentDistance=(x,y,{a,b})=>{const dx=b.lx-a.lx,dy=b.ly-a.ly,t=Math.max(0,Math.min(1,((x-a.lx)*dx+(y-a.ly)*dy)/(dx*dx+dy*dy||1)));return Math.hypot(x-a.lx-t*dx,y-a.ly-t*dy)};
+  const clearLinks=links.filter(({a,b,d})=>{const steps=Math.ceil(d/(6*scale));for(let i=0;i<=steps;i++){const t=i/(steps||1),x=a.lx+(b.lx-a.lx)*t,y=a.ly+(b.ly-a.ly)*t;if(foreign.some(rect=>distance(x,y,rect)<20*scale))return false}return true});
+  const ellipseDistance=(x,y,b)=>{const rx=b.w*.72,ry=b.h*.72;return (Math.hypot((x-b.x-b.w/2)/rx,(y-b.y-b.h/2)/ry)-1)*Math.min(rx,ry)};
+  const x0=Math.min(...memberRects.map(b=>b.x-b.w*.3))-padding-step*2,y0=Math.min(...memberRects.map(b=>b.y-b.h*.3))-padding-step*2;
+  const cols=Math.ceil((Math.max(...memberRects.map(b=>b.x+b.w*1.3))+padding+step*2-x0)/step),rows=Math.ceil((Math.max(...memberRects.map(b=>b.y+b.h*1.3))+padding+step*2-y0)/step);
+  const values=new Float32Array((cols+1)*(rows+1));
+  for(let row=0;row<=rows;row++)for(let col=0;col<=cols;col++){const x=x0+col*step,y=y0+row*step;let value=-Infinity;
+   for(const b of memberRects)value=Math.max(value,padding-ellipseDistance(x,y,b));
+   for(const link of clearLinks)value=Math.max(value,12*scale-segmentDistance(x,y,link));
+   // Foreign nodes AND their titles are hard exclusions, even inside a connection.
+   for(const b of foreign)value=Math.min(value,distance(x,y,b)-7*scale);
+   values[row*(cols+1)+col]=value;
   }
-  points.sort((a,b)=>a.x-b.x||a.y-b.y);
-  const cross=(o,a,b)=>(a.x-o.x)*(b.y-o.y)-(a.y-o.y)*(b.x-o.x),half=list=>{const h=[];for(const p of list){while(h.length>1&&cross(h.at(-2),h.at(-1),p)<=0)h.pop();h.push(p)}return h};
-  const lower=half(points),upper=half([...points].reverse());return lower.slice(0,-1).concat(upper.slice(0,-1));
+  const fill=new Path2D(),border=new Path2D();
+  function triangle(points){const clipped=[],crossings=[];for(let i=0;i<3;i++){const a=points[i],b=points[(i+1)%3];if(a.v>=0)clipped.push(a);if((a.v>=0)!==(b.v>=0)){const t=a.v/(a.v-b.v),p={x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t};clipped.push(p);crossings.push(p)}}
+   if(clipped.length>=3){fill.moveTo(clipped[0].x,clipped[0].y);for(const p of clipped.slice(1))fill.lineTo(p.x,p.y);fill.closePath()}
+   if(crossings.length===2){border.moveTo(crossings[0].x,crossings[0].y);border.lineTo(crossings[1].x,crossings[1].y)}
+  }
+  for(let row=0;row<rows;row++)for(let col=0;col<cols;col++){const points=[[col,row],[col+1,row],[col+1,row+1],[col,row+1]].map(([c,r])=>({x:x0+c*step,y:y0+r*step,v:values[r*(cols+1)+c]}));triangle([points[0],points[1],points[2]]);triangle([points[0],points[2],points[3]])}
+  const region={fill,border};regions.set(key,region);return region;
  }
  function render(){
   if(disposed)return;layoutTitles();ctx.clearRect(0,0,width,height);corePoints=[];labelBoxes=[];
@@ -86,9 +106,10 @@ function createCoreGraph(root){
   let groupCount=0;const groupLabels=[];
   if(mode){const groups=new Map();for(const n of nodes)for(const key of n.clusters[active]||[]){if(!groups.has(key))groups.set(key,[]);groups.get(key).push(n);}
    groupCount=groups.size;let index=0;
-   for(const [name,members] of groups){const hull=groupHull(members);if(hull.length<3)continue;
+   for(const [name,members] of groups){const region=groupRegion(name,members);
     const hue=({arp:155,lf:265,exam:45}[active]+index++*47)%360;
-    ctx.fillStyle=`hsla(${hue},75%,65%,.065)`;ctx.strokeStyle=`hsla(${hue},75%,65%,.65)`;ctx.lineWidth=1.5;ctx.lineJoin='round';ctx.beginPath();ctx.moveTo((hull.at(-1).x+hull[0].x)/2,(hull.at(-1).y+hull[0].y)/2);hull.forEach((p,i)=>{const next=hull[(i+1)%hull.length],prev=hull[(i+hull.length-1)%hull.length],round=Math.min(12*camera().zoom/titleZoom,Math.hypot(p.x-prev.x,p.y-prev.y)/4,Math.hypot(p.x-next.x,p.y-next.y)/4);ctx.arcTo(p.x,p.y,next.x,next.y,round)});ctx.closePath();ctx.fill();ctx.stroke();
+    ctx.save();ctx.translate(width/2-camera().x*unit*camera().zoom,height/2-camera().y*unit*camera().zoom);ctx.scale(unit*camera().zoom,unit*camera().zoom);
+    ctx.fillStyle=`hsla(${hue},75%,65%,.085)`;ctx.strokeStyle=`hsla(${hue},75%,65%,.8)`;ctx.lineWidth=1.5/(unit*camera().zoom);ctx.lineJoin='round';ctx.fill(region.fill);ctx.stroke(region.border);ctx.restore();
     groupLabels.push(`<span style="--group-color:hsl(${hue},75%,75%)">${esc(name)}</span>`);
    }
   }
@@ -203,6 +224,7 @@ function createCoreGraph(root){
   overview(){coreDemo.search='';coreDemo.selectedCluster=null;coreDemo.selected=null;coreDemo.camera={zoom:1,x:0,y:0};root.querySelector('#core-search').value='';filter();save();},
   destroy(){disposed=true;coreRequest++;cancelAnimationFrame(frame);observer.disconnect();},
   nextDetail(){return ++detailRevision;},isDetail(v){return v===detailRevision&&expanded();},
+  regionContains(name,id){const region=[...regions].find(([key])=>key.startsWith(name+':'))?.[1],n=byId.get(id);if(!region||!n)return false;ctx.save();ctx.setTransform(1,0,0,1,0,0);const result=ctx.isPointInPath(region.fill,n.lx,n.ly);ctx.restore();return result;},
   snapshot(){return {titleZoom,titleBoxes:labelBoxes,nodeBoxes:nodes.map(n=>{const p=point(n),r=radius(n);return {id:n.id,x:p.x-r,y:p.y-r,w:r*2,h:r*2};}),memberships:nodes.map(n=>({id:n.id,clusters:n.clusters})),clusterIds:nodes.map(n=>n.id),visibleCoreIds:corePoints.map(c=>c.id),edges:edges.map(e=>({source:e.source,target:e.target,weight:e.weight})),positions:nodes.map(n=>({id:n.id,x:n.x,y:n.y,tx:n.tx,ty:n.ty})),selected:coreDemo.selectedCluster};}
  };
 }
