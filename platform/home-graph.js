@@ -81,7 +81,7 @@ function createCoreGraph(root){
      corePoints.push(cp);ctx.fillStyle=color(c);ctx.beginPath();ctx.arc(cp.x,cp.y,c.id===coreDemo.selected?dot+3:dot,0,Math.PI*2);ctx.fill();
      if(c.id===coreDemo.selected){ctx.strokeStyle='#fff';ctx.lineWidth=1;ctx.stroke();}
     });
-   }else{ctx.fillStyle=color(n);ctx.beginPath();ctx.arc(p.x,p.y,Math.max(2,r*.2),0,Math.PI*2);ctx.fill();}
+   }
    labels.push({n,p,r,chosen});ctx.globalAlpha=1;
   }
   // Labels are drawn after every node, so circles never paint over text.
