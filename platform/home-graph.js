@@ -69,14 +69,30 @@ function createCoreGraph(root){
   n.titleLines.forEach((line,i)=>{ctx.strokeText(line,p.x,y+i*15*scale);ctx.fillText(line,p.x,y+i*15*scale);});
   labelBoxes.push({id:n.id,x:p.x-n.titleWidth*scale/2,y,w:n.titleWidth*scale,h});
  }
+ function groupHull(members){
+  const points=[],scale=camera().zoom/titleZoom,padding=18*scale;
+  for(const n of members){const p=point(n),r=radius(n)+padding;
+   for(let i=0;i<16;i++){const a=i*Math.PI/8;points.push({x:p.x+Math.cos(a)*r,y:p.y+Math.sin(a)*r})}
+   const w=n.titleWidth*scale/2+padding,top=p.y-radius(n)-(n.titleLines.length*15+10)*scale-padding;
+   points.push({x:p.x-w,y:top},{x:p.x+w,y:top});
+  }
+  points.sort((a,b)=>a.x-b.x||a.y-b.y);
+  const cross=(o,a,b)=>(a.x-o.x)*(b.y-o.y)-(a.y-o.y)*(b.x-o.x),half=list=>{const h=[];for(const p of list){while(h.length>1&&cross(h.at(-2),h.at(-1),p)<=0)h.pop();h.push(p)}return h};
+  const lower=half(points),upper=half([...points].reverse());return lower.slice(0,-1).concat(upper.slice(0,-1));
+ }
  function render(){
   if(disposed)return;layoutTitles();ctx.clearRect(0,0,width,height);corePoints=[];labelBoxes=[];
   const active=[...coreDemo.active][0],mode=coreModes.find(m=>m[0]===active),isOpen=expanded(),focus=selected();
-  if(mode){const groups=new Map();for(const n of nodes)for(const key of n.clusters[active]||[]){if(!groups.has(key))groups.set(key,[]);groups.get(key).push(point(n));}
-   for(const [name,ps] of groups){const minX=Math.min(...ps.map(p=>p.x))-35,maxX=Math.max(...ps.map(p=>p.x))+35,minY=Math.min(...ps.map(p=>p.y))-35,maxY=Math.max(...ps.map(p=>p.y))+35;
-    ctx.fillStyle=mode[2]+'0b';ctx.strokeStyle=mode[2]+'55';ctx.lineWidth=1;ctx.beginPath();ctx.roundRect(minX,minY,maxX-minX,maxY-minY,32);ctx.fill();ctx.stroke();ctx.font='12px system-ui';ctx.fillStyle=mode[2];ctx.textAlign='left';ctx.textBaseline='bottom';ctx.fillText(name,minX+12,minY-5);
+  let groupCount=0;
+  if(mode){const groups=new Map();for(const n of nodes)for(const key of n.clusters[active]||[]){if(!groups.has(key))groups.set(key,[]);groups.get(key).push(n);}
+   groupCount=groups.size;let index=0;
+   for(const [name,members] of groups){const hull=groupHull(members);if(hull.length<3)continue;
+    const hue=({arp:155,lf:265,exam:45}[active]+index++*47)%360;
+    ctx.fillStyle=`hsla(${hue},75%,65%,.065)`;ctx.strokeStyle=`hsla(${hue},75%,65%,.65)`;ctx.lineWidth=1.5;ctx.lineJoin='round';ctx.beginPath();ctx.moveTo((hull.at(-1).x+hull[0].x)/2,(hull.at(-1).y+hull[0].y)/2);hull.forEach((p,i)=>{const next=hull[(i+1)%hull.length],prev=hull[(i+hull.length-1)%hull.length],round=Math.min(12*camera().zoom/titleZoom,Math.hypot(p.x-prev.x,p.y-prev.y)/4,Math.hypot(p.x-next.x,p.y-next.y)/4);ctx.arcTo(p.x,p.y,next.x,next.y,round)});ctx.closePath();ctx.fill();ctx.stroke();
+    const top=hull.reduce((a,b)=>a.y<b.y?a:b);ctx.font='12px system-ui';ctx.fillStyle=`hsl(${hue},75%,75%)`;ctx.textAlign='center';ctx.textBaseline='bottom';ctx.fillText(name,top.x,top.y-6);
    }
   }
+  stage.dataset.groupCount=String(groupCount);
   for(const edge of edges){
    const lit=edge.source===focus?.id||edge.target===focus?.id;if(!edge.strong&&!lit)continue;
    const a=byId.get(edge.source),b=byId.get(edge.target);if(!a||!b)continue;
@@ -122,7 +138,7 @@ function createCoreGraph(root){
    if(cs.length){dx=(cs.reduce((a,c)=>a+c.x,0)/cs.length-n.baseX)*.22;dy=(cs.reduce((a,c)=>a+c.y,0)/cs.length-n.baseY)*.22;}
    const cap=Math.min(1,70/(Math.hypot(dx,dy)||1));n.tx=n.baseX+dx*cap;n.ty=n.baseY+dy*cap;
   }
-  root.querySelector('#core-status').textContent=active&&nodes.some(n=>!n.clusters[active]?.length)?'Diese Zuordnung ist noch nicht fachlich hinterlegt. Nicht zugeordnete Cluster bleiben frei.':'Cluster bündeln Cores. Starke Verbindungen sind sichtbar; Auswahl zeigt auch schwächere.';
+  root.querySelector('#core-status').textContent=active?(active==='exam'?'Gruppierung nach Prüfungsteil. Dieser Kurs enthält AP1-Inhalte.':'Fachliche Zuordnung der Wissenscluster · Mehrfachzuordnungen sind möglich.'):'Cluster bündeln Cores. Starke Verbindungen sind sichtbar; Auswahl zeigt auch schwächere.';
  }
  function animate(){
   cancelAnimationFrame(frame);targets();const start=performance.now(),from=nodes.map(n=>({x:n.x,y:n.y}));
@@ -186,7 +202,7 @@ function createCoreGraph(root){
   overview(){coreDemo.search='';coreDemo.selectedCluster=null;coreDemo.selected=null;coreDemo.camera={zoom:1,x:0,y:0};root.querySelector('#core-search').value='';filter();save();},
   destroy(){disposed=true;coreRequest++;cancelAnimationFrame(frame);observer.disconnect();},
   nextDetail(){return ++detailRevision;},isDetail(v){return v===detailRevision&&expanded();},
-  snapshot(){return {titleZoom,titleBoxes:labelBoxes,nodeBoxes:nodes.map(n=>{const p=point(n),r=radius(n);return {id:n.id,x:p.x-r,y:p.y-r,w:r*2,h:r*2};}),clusterIds:nodes.map(n=>n.id),visibleCoreIds:corePoints.map(c=>c.id),edges:edges.map(e=>({source:e.source,target:e.target,weight:e.weight})),positions:nodes.map(n=>({id:n.id,x:n.x,y:n.y,tx:n.tx,ty:n.ty})),selected:coreDemo.selectedCluster};}
+  snapshot(){return {titleZoom,titleBoxes:labelBoxes,nodeBoxes:nodes.map(n=>{const p=point(n),r=radius(n);return {id:n.id,x:p.x-r,y:p.y-r,w:r*2,h:r*2};}),memberships:nodes.map(n=>({id:n.id,clusters:n.clusters})),clusterIds:nodes.map(n=>n.id),visibleCoreIds:corePoints.map(c=>c.id),edges:edges.map(e=>({source:e.source,target:e.target,weight:e.weight})),positions:nodes.map(n=>({id:n.id,x:n.x,y:n.y,tx:n.tx,ty:n.ty})),selected:coreDemo.selectedCluster};}
  };
 }
 async function showCoreDetail(id){const graph=coreGraph,revision=graph.nextDetail();try{const result=await request('coreDetail',{core:id});if(graph!==coreGraph||!graph.root.isConnected||!graph.isDetail(revision))return;const c=result.core;document.querySelector('#core-detail').innerHTML=`<h2>${esc(c.statement)}</h2><p class="muted">${esc(c.context)}</p>${(c.sources||[]).length?`<p class="core-sources">${c.sources.filter(s=>/^https:\/\//.test(s.url)).map(s=>`<a href="${esc(s.url)}" target="_blank" rel="noopener noreferrer">${esc(s.title)}</a>`).join(' · ')}</p>`:''}<p>${boot.role==='learner'?c.total?`${c.percent===null?'Noch unbearbeitet':c.percent+' %'} · ${c.correct} richtig · ${c.wrong} falsch · ${c.total} verknüpfte Aufgaben`:'Noch keine direkt zugeordneten Prüfaufgaben.':'Kursleiteransicht · '+c.total+' verknüpfte Aufgaben'}</p><div class="row"><button class="secondary" id="cluster-back">Zurück zum Cluster</button>${boot.role==='learner'&&c.total?`<button data-core-practice="visual" data-core-id="${esc(id)}">Visuell üben</button><button data-core-practice="auditory" data-core-id="${esc(id)}">Auditiv üben</button>${c.wrong?`<button data-core-practice="visual" data-core-id="${esc(id)}" data-core-wrong>Falsche visuelle Aufgaben</button><button data-core-practice="auditory" data-core-id="${esc(id)}" data-core-wrong>Falsche Audioaufgaben</button>`:''}`:''}</div><details><summary>Verknüpfte Aufgaben (${result.questionCount})</summary>${result.questions.map(q=>`<p>${esc(q.title)}<small>${q.status==='correct'?'Richtig':q.status==='wrong'?'Falsch':q.status==='unanswered'?'Unbearbeitet':''} · ${esc([...new Set(q.sources.map(s=>s.title+' · '+(s.modality==='auditory'?'auditiv':'visuell')))].join(' / '))}</small></p>`).join('')}${result.questionCount>result.questions.length?'<p>Die ersten 100 Aufgaben werden angezeigt.</p>':''}</details>`;graph.render();}catch(e){showError(e);}}

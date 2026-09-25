@@ -1,6 +1,6 @@
 'use strict';
 // Named knowledge clusters reuse reviewed topic membership and Core dependencies.
-// Curriculum memberships come exclusively from the existing curated Core catalog.
+// Cluster-level curriculum mapping is an editorial classification; see CLUSTER-CURRICULUM.md.
 const coreClusterDefinitions=[
  ['unternehmen','Unternehmen und Ziele','01_01'],
  ['kundenbedarf','Kundenbedarf und Beratung','01_02'],
@@ -54,6 +54,29 @@ const coreClusterDefinitions=[
  {id:'verbesserung',title:'Kontinuierliche Verbesserung',coreIds:['pdca','soll-ist-vergleich','wirksamkeitsnachweis','retrospektive','verbesserung-pruefen','nacharbeit','prozessziel']},
  {id:'transportprotokolle',title:'TCP und UDP',coreIds:['tcp','udp','port-network','standardports','port-kein-vertrauen','quic']}
 ]);
+// Short display labels refer to KMK learning fields and FIAusbV training sections.
+const clusterCurriculum={
+ lf:[
+  ['LF 1 · Unternehmen und eigene Rolle','unternehmen prozesse'],
+  ['LF 2 · Arbeitsplätze ausstatten','kundenbedarf projektplanung zusammenarbeit beschaffung vertraege rechnen bezugskalkulation lebenszykluskosten speicherbedarf energie hardware peripherie arbeitsplatz betriebssysteme virtualisierung softwareauswahl ki prompting pruefungsstrategie'],
+  ['LF 3 · Clients in Netzwerke einbinden','zahlensysteme datenuebertragung subnetting berechtigungen netzwerkaufbau netzkonfiguration netzdienste netzsegmentierung bits-bytes ipv4-adressen ipv6-adressen transportprotokolle'],
+  ['LF 4 · Schutzbedarf analysieren','sicherungskapazitaet informationssicherheit systemschutz kryptografie datenschutz'],
+  ['LF 5 · Software und Daten','programmierung verzweigungen schleifen softwaretests aktivitaeten objektorientierung datenmodelle datenintegritaet'],
+  ['LF 6 · Serviceanfragen bearbeiten','service qualitaet diagnose verbesserung'],
+  ['LF 8 · Daten bereitstellen','datenmodelle datenintegritaet'],
+  ['LF 9 · Netzwerke und Dienste','netzsegmentierung virtualisierung ipv6-adressen transportprotokolle']
+ ],
+ arp:[
+  ['Arbeitsaufgaben und Geschäftsprozesse','unternehmen prozesse projektplanung zusammenarbeit rechnen pruefungsstrategie'],
+  ['Kunden informieren und beraten','kundenbedarf vertraege softwareauswahl'],
+  ['IT-Systeme und Lösungen beurteilen','beschaffung bezugskalkulation lebenszykluskosten zahlensysteme speicherbedarf datenuebertragung energie hardware peripherie arbeitsplatz virtualisierung bits-bytes ki prompting'],
+  ['IT-Lösungen entwickeln und betreuen','subnetting betriebssysteme netzwerkaufbau netzkonfiguration netzdienste netzsegmentierung programmierung verzweigungen schleifen aktivitaeten objektorientierung datenmodelle datenintegritaet ipv4-adressen ipv6-adressen transportprotokolle'],
+  ['Qualität sichern und dokumentieren','qualitaet softwaretests verbesserung'],
+  ['IT-Sicherheit und Datenschutz','sicherungskapazitaet berechtigungen informationssicherheit systemschutz kryptografie datenschutz'],
+  ['Leistungen erbringen und Auftrag abschließen','service diagnose']
+ ]
+};
+function curriculumGroups(id,mode){return (clusterCurriculum[mode]||[]).filter(([,ids])=>ids.split(' ').includes(id)).map(([label])=>label)}
 function buildKnowledgeClusters(cores){
  const byId=new Map(cores.map(c=>[c.id,c]));
  const nodes=coreClusterDefinitions.map(def=>{
@@ -62,7 +85,7 @@ function buildKnowledgeClusters(cores){
   // A statement's reviewed prerequisite is also part of its knowledge cluster.
   const pending=[...ids];while(pending.length){for(const id of byId.get(pending.pop())?.usesCoreIds||[])if(byId.has(id)&&!ids.has(id)){ids.add(id);pending.push(id);}}
   const members=[...ids].map(id=>byId.get(id)),clusters={};
-  for(const mode of ['arp','lf','exam'])clusters[mode]=[...new Set(members.flatMap(c=>c.clusters?.[mode]||[]))];
+  for(const mode of ['arp','lf','exam'])clusters[mode]=[...new Set([...curriculumGroups(def.id,mode),...members.flatMap(c=>c.clusters?.[mode]||[])])];
   const answered=members.some(c=>c.percent!==null);
   return {id:def.id,title:def.title,coreIds:[...ids],clusters,percent:answered?Math.round(members.reduce((sum,c)=>sum+(c.percent||0),0)/members.length):null};
  }).filter(n=>n.coreIds.length);
