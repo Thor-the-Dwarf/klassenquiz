@@ -174,3 +174,5 @@ label.practice-topic{margin:0;cursor:pointer}label.practice-topic:has(input:disa
 
 /* Cluster overview and semantic zoom: Core symbols exist only on hover/focus. */
 .cluster-zoom{position:absolute;right:12px;bottom:12px;display:flex;align-items:center;gap:8px;background:#101a2bea;border:1px solid var(--line);border-radius:30px;padding:4px;z-index:3}.cluster-zoom button{width:34px;height:34px;padding:0;font-size:23px}.cluster-zoom output{font-size:12px;min-width:42px;text-align:center}.cluster-focus-status{position:absolute;top:8px;left:12px;right:12px;margin:0;pointer-events:none;color:var(--muted);font-size:12px;text-align:center}.core-live .core-stage{min-height:430px}.core-hover-caption{overflow-wrap:anywhere}
+
+.invitation-context button{margin:8px 8px 0 0}.learner-layout #sidebar.practice-selecting{align-self:start;max-height:calc(100dvh - var(--appbar-height,75px) - 80px)}@media(max-width:760px){.learner-layout #sidebar.practice-selecting{max-height:55dvh;min-height:0}.learner-layout .shell{grid-auto-rows:min-content}}

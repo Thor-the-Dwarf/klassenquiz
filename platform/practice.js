@@ -98,3 +98,39 @@ document.addEventListener('keydown',e=>{
 });
 
 document.addEventListener('input',e=>{const el=e.target;if(el.dataset.practiceField===undefined||!P.round||view!=='practice')return;const t=P.round.tasks[P.round.position];if(t.submission||t.pending)return;const answer=richAnswer(t,P.round.draft[t.key]||Array(t.fields.length).fill(''));answer[Number(el.dataset.practiceField)]=el.value;P.round.draft[t.key]=answer;practiceSave();updatePracticeControls();});
+
+// Visual quiz navigation by wheel or swipe, without skipping unanswered tasks.
+let practiceWheelTotal=0,practiceWheelAt=0,practiceScrollAt=0,practiceTouch=null;
+function practiceScrollAllowed(target){
+ return view==='practice'&&P.round?.modality!=='auditory'&&!P.choosing&&
+  target instanceof Element&&!!target.closest('.practice-round')&&
+  !target.closest('input,textarea,select,[contenteditable="true"],[draggable="true"],dialog');
+}
+function practiceScrollStep(direction){
+ if(Date.now()-practiceScrollAt<700)return false;
+ if(feedbackLocked()){flashFeedback();return false;}
+ const b=$(direction>0?'[data-practice-next]':'[data-practice-prev]');
+ if(!b||b.disabled)return false;
+ practiceScrollAt=Date.now();b.click();scrollTo({top:0,behavior:'instant'});
+ document.querySelector('.practice-round')?.animate([{opacity:.6,transform:'translateY('+direction*16+'px)'},{opacity:1,transform:'translateY(0)'}],{duration:matchMedia('(prefers-reduced-motion: reduce)').matches?0:180});
+ return true;
+}
+document.addEventListener('wheel',e=>{
+ if(e.ctrlKey||Math.abs(e.deltaX)>Math.abs(e.deltaY)||!practiceScrollAllowed(e.target))return;
+ const page=document.scrollingElement,edge=e.deltaY>0?page.scrollTop+innerHeight>=page.scrollHeight-3:page.scrollTop<=3;
+ if(!edge)return;
+ const now=Date.now();if(now-practiceWheelAt>180||Math.sign(practiceWheelTotal)!==Math.sign(e.deltaY))practiceWheelTotal=0;
+ practiceWheelAt=now;practiceWheelTotal+=e.deltaY*(e.deltaMode===1?16:e.deltaMode===2?innerHeight:1);
+ if(Math.abs(practiceWheelTotal)>=70){if(practiceScrollStep(Math.sign(practiceWheelTotal)))e.preventDefault();practiceWheelTotal=0;}
+},{passive:false});
+document.addEventListener('touchstart',e=>{
+ practiceTouch=null;if(e.touches.length!==1||!practiceScrollAllowed(e.target))return;
+ const t=e.touches[0],page=document.scrollingElement;
+ practiceTouch={x:t.clientX,y:t.clientY,top:page.scrollTop<=3,bottom:page.scrollTop+innerHeight>=page.scrollHeight-3};
+},{passive:true});
+document.addEventListener('touchend',e=>{
+ const start=practiceTouch;practiceTouch=null;if(!start||e.changedTouches.length!==1||!practiceScrollAllowed(e.target))return;
+ const t=e.changedTouches[0],dy=start.y-t.clientY;if(Math.abs(dy)<70||Math.abs(dy)<Math.abs(start.x-t.clientX)*1.4)return;
+ if((dy>0?start.bottom:start.top)&&practiceScrollStep(Math.sign(dy)))e.preventDefault();
+},{passive:false});
+document.addEventListener('touchcancel',()=>{practiceTouch=null;});

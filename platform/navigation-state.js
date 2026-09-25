@@ -17,8 +17,13 @@ async function restoreNavigation(){
  navigationReady=false;navigationRestoring=true;syncBrand();
  const saved=storage.get(navigationKey());
  try{
-  if(!saved){coreDemo.active.clear();coreDemo.selected=null;coreDemo.search='';coreDemo.offset=0;coreDemo.center=null;coreDemo.selectedCluster=null;coreDemo.camera={zoom:1,x:0,y:0};await drawView();return;}
+  if(!saved){if(boot.role==='learner'){view='home';selected=null;drawSidebar();drawTabs();}coreDemo.active.clear();coreDemo.selected=null;coreDemo.search='';coreDemo.offset=0;coreDemo.center=null;coreDemo.selectedCluster=null;coreDemo.camera={zoom:1,x:0,y:0};await drawView();return;}
   coreDemo.active=new Set((saved.coreGraph?.active||[]).filter(k=>['arp','lf','exam'].includes(k)).slice(-1));coreDemo.selected=typeof saved.coreGraph?.selected==='string'?saved.coreGraph.selected:null;coreDemo.search=saved.coreGraph?.search||'';coreDemo.offset=saved.coreGraph?.offset||0;coreDemo.center=null;coreDemo.selectedCluster=typeof saved.coreGraph?.selectedCluster==='string'?saved.coreGraph.selectedCluster:null;const cam=saved.coreGraph?.camera;coreDemo.camera={zoom:Number.isFinite(cam?.zoom)?Math.max(.65,Math.min(7,cam.zoom)):1,x:Number.isFinite(cam?.x)?cam.x:0,y:Number.isFinite(cam?.y)?cam.y:0};
+  // Participant entry always opens the graph; saved rounds remain resumable.
+  if(boot.role==='learner'){
+   P.mode=null;P.choosing=false;P.selection.clear();P.knowledge=!!saved.practice?.knowledge;
+   selected=null;view='home';drawSidebar();drawTabs();await drawView();scrollTo(0,0);return;
+  }
   expanded.clear();for(const entry of saved.expanded||[])expanded.set(...entry);
   selected=saved.selected;chartMode=saved.chartMode||'latest';chartDifficulty=saved.chartDifficulty||'easy';chartSelection.clear();for(const id of saved.chartSelection||[])chartSelection.add(id);
   Object.assign(hostNavigation,{panel:saved.host?.panel||null,base:saved.host?.base||null,positions:new Map(saved.host?.positions||[])});
