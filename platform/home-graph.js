@@ -23,10 +23,11 @@ async function loadCoreGraph(){
 function createCoreGraph(root){
  const canvas=root.querySelector('canvas'),ctx=canvas.getContext('2d'),stage=root.querySelector('.core-stage'),hover=root.querySelector('.core-hover');
  let model={nodes:[],edges:[],cores:new Map()},nodes=[],edges=[],byId=new Map(),corePoints=[],width=1,height=1,unit=1,frame=0,disposed=false,hovered=null,detailRevision=0;
- let pointers=new Map(),gesture=null;
+ let pointers=new Map(),gesture=null,layoutKey='',labelBoxes=[];
+ const titleZoom=1.4;
  const camera=()=>coreDemo.camera;
  const save=()=>{if(typeof saveNavigation==='function')saveNavigation();};
- const point=n=>({x:width/2+(n.x-camera().x)*unit*camera().zoom,y:height/2+(n.y-camera().y)*unit*camera().zoom});
+ const point=n=>({x:width/2+((n.lx??n.x)-camera().x)*unit*camera().zoom,y:height/2+((n.ly??n.y)-camera().y)*unit*camera().zoom});
  const selected=()=>byId.get(coreDemo.selectedCluster);
  const expanded=()=>!!selected()&&camera().zoom>=1.8;
  const baseRadius=24;
@@ -44,16 +45,32 @@ function createCoreGraph(root){
   }
   render();
  }
- function label(text,x,y,maxWidth,force,boxes){
-  ctx.font='12px system-ui';const words=text.split(' '),lines=[''];
-  for(const word of words){const i=lines.length-1;if(ctx.measureText(lines[i]+' '+word).width>maxWidth&&lines[i])lines.push(word);else lines[i]+=(lines[i]?' ':'')+word;}
-  const h=lines.length*15,box={x:x-maxWidth/2,y:y-2,w:maxWidth,h:h+4};
-  if(!force&&(box.x<6||box.x+box.w>width-6||box.y<24||box.y+box.h>height-55||boxes.some(b=>box.x<b.x+b.w&&box.x+box.w>b.x&&box.y<b.y+b.h&&box.y+box.h>b.y)))return false;
-  boxes.push(box);ctx.textAlign='center';ctx.textBaseline='top';ctx.lineWidth=4;ctx.strokeStyle='#0d1222';ctx.fillStyle='#e4edfa';
-  lines.forEach((line,i)=>{ctx.strokeText(line,x,y+i*15);ctx.fillText(line,x,y+i*15);});return true;
+ function titleLines(text){
+  ctx.font='12px system-ui';const lines=[''];
+  for(const word of text.split(' ')){const i=lines.length-1;if(ctx.measureText(lines[i]+' '+word).width>126&&lines[i])lines.push(word);else lines[i]+=(lines[i]?' ':'')+word;}
+  return lines;
+ }
+ // Reserve the entire node-and-title footprint in graph coordinates, independent of zoom.
+ function layoutTitles(){
+  const key=unit+':'+coreDemo.selectedCluster+':'+nodes.map(n=>n.x+','+n.y).join(';');if(key===layoutKey)return;layoutKey=key;
+  const placed=[],scale=1/(unit*titleZoom),gap=12*scale;
+  for(const n of nodes){
+   n.titleLines=titleLines(n.title);n.titleWidth=Math.max(...n.titleLines.map(line=>ctx.measureText(line).width))+8;
+   const r=n.id===coreDemo.selectedCluster?136:baseRadius,w=Math.max(r*2,n.titleWidth*scale),top=r+(n.titleLines.length*15+12)*scale,h=top+r;
+   const free=(x,y)=>{const box={x:x-w/2-gap/2,y:y-top-gap/2,w:w+gap,h:h+gap};return placed.every(b=>box.x>=b.x+b.w||box.x+box.w<=b.x||box.y>=b.y+b.h||box.y+box.h<=b.y)?box:null;};
+   let x=n.x,y=n.y,box=free(x,y);
+   for(let i=1;!box;i++){const angle=i*2.39996323,distance=12*Math.sqrt(i);x=n.x+Math.cos(angle)*distance;y=n.y+Math.sin(angle)*distance;box=free(x,y);}
+   n.lx=x;n.ly=y;placed.push(box);
+  }
+ }
+ function label(n,p,r){
+  const scale=camera().zoom/titleZoom,h=n.titleLines.length*15*scale,y=p.y-r-10*scale-h;
+  ctx.font=`${12*scale}px system-ui`;ctx.textAlign='center';ctx.textBaseline='top';ctx.lineWidth=4*scale;ctx.strokeStyle='#0d1222';ctx.fillStyle='#e4edfa';
+  n.titleLines.forEach((line,i)=>{ctx.strokeText(line,p.x,y+i*15*scale);ctx.fillText(line,p.x,y+i*15*scale);});
+  labelBoxes.push({id:n.id,x:p.x-n.titleWidth*scale/2,y,w:n.titleWidth*scale,h});
  }
  function render(){
-  if(disposed)return;ctx.clearRect(0,0,width,height);corePoints=[];
+  if(disposed)return;layoutTitles();ctx.clearRect(0,0,width,height);corePoints=[];labelBoxes=[];
   const active=[...coreDemo.active][0],mode=coreModes.find(m=>m[0]===active),isOpen=expanded(),focus=selected();
   if(mode){const groups=new Map();for(const n of nodes)for(const key of n.clusters[active]||[]){if(!groups.has(key))groups.set(key,[]);groups.get(key).push(point(n));}
    for(const [name,ps] of groups){const minX=Math.min(...ps.map(p=>p.x))-35,maxX=Math.max(...ps.map(p=>p.x))+35,minY=Math.min(...ps.map(p=>p.y))-35,maxY=Math.max(...ps.map(p=>p.y))+35;
@@ -67,11 +84,11 @@ function createCoreGraph(root){
    ctx.beginPath();ctx.moveTo(from.x+(to.x-from.x)/distance*ar,from.y+(to.y-from.y)/distance*ar);ctx.lineTo(to.x-(to.x-from.x)/distance*br,to.y-(to.y-from.y)/distance*br);
    ctx.strokeStyle=lit?'#46d7ff88':isOpen?'#58708918':'#7691b13d';ctx.lineWidth=lit?1+Math.min(2,Math.log2(edge.weight+1)/3):.8;ctx.stroke();
   }
-  const boxes=nodes.map(n=>{const p=point(n),r=radius(n);return {x:p.x-r-3,y:p.y-r-3,w:r*2+6,h:r*2+6};}),labels=[];
+  const labels=[];
   // Draw selected cluster last so its Cores stay in the foreground.
   const ordered=nodes.filter(n=>n!==focus).concat(focus?[focus]:[]);
   for(const n of ordered){
-   const p=point(n),r=radius(n);if(p.x+r<0||p.y+r<0||p.x-r>width||p.y-r>height)continue;
+   const p=point(n),r=radius(n);
    const chosen=n===focus;ctx.globalAlpha=isOpen&&!chosen?.35:1;
    ctx.fillStyle=chosen?'#122439f2':'#142338';ctx.strokeStyle=chosen?'#46d7ff':color(n);ctx.lineWidth=chosen?2:1.5;
    ctx.beginPath();ctx.arc(p.x,p.y,r,0,Math.PI*2);ctx.fill();ctx.stroke();
@@ -84,10 +101,9 @@ function createCoreGraph(root){
    }
    labels.push({n,p,r,chosen});ctx.globalAlpha=1;
   }
-  // Labels are drawn after every node, so circles never paint over text.
-  for(const {n,p,r,chosen} of labels){const force=chosen||hovered?.id===n.id;if(isOpen&&!chosen)continue;const maxWidth=Math.min(126,width-24);
-   if(!label(n.title,p.x,p.y+r+7,maxWidth,force,boxes)&&!force)label(n.title,p.x,p.y-r-37,maxWidth,false,boxes);
-  }
+  // One shared threshold, one fixed position above each node; never hide individual titles.
+  if(camera().zoom>=titleZoom)for(const {n,p,r} of labels)label(n,p,r);
+  stage.dataset.titleZoom=String(titleZoom);stage.dataset.titleCount=String(labelBoxes.length);
   stage.dataset.clusterCount=String(nodes.length);stage.dataset.visibleCores=String(corePoints.length);
   root.querySelector('#cluster-zoom-level').textContent=Math.round(camera().zoom*100)+' %';
   root.querySelector('#cluster-zoom-out').disabled=camera().zoom<=.65;root.querySelector('#cluster-zoom-in').disabled=camera().zoom>=7;
@@ -137,7 +153,7 @@ function createCoreGraph(root){
  }
  function zoom(factor){
   const wasOpen=expanded(),next=Math.max(.65,Math.min(7,camera().zoom*factor)),n=selected();
-  if(n){camera().x=n.x;camera().y=n.y;}
+  if(n){camera().x=n.lx??n.x;camera().y=n.ly??n.y;}
   camera().zoom=next;if(wasOpen!==expanded()){showHover(null);defaultDetail();}render();save();
  }
  function hit(x,y){
@@ -170,7 +186,7 @@ function createCoreGraph(root){
   overview(){coreDemo.search='';coreDemo.selectedCluster=null;coreDemo.selected=null;coreDemo.camera={zoom:1,x:0,y:0};root.querySelector('#core-search').value='';filter();save();},
   destroy(){disposed=true;coreRequest++;cancelAnimationFrame(frame);observer.disconnect();},
   nextDetail(){return ++detailRevision;},isDetail(v){return v===detailRevision&&expanded();},
-  snapshot(){return {clusterIds:nodes.map(n=>n.id),visibleCoreIds:corePoints.map(c=>c.id),edges:edges.map(e=>({source:e.source,target:e.target,weight:e.weight})),positions:nodes.map(n=>({id:n.id,x:n.x,y:n.y,tx:n.tx,ty:n.ty})),selected:coreDemo.selectedCluster};}
+  snapshot(){return {titleZoom,titleBoxes:labelBoxes,nodeBoxes:nodes.map(n=>{const p=point(n),r=radius(n);return {id:n.id,x:p.x-r,y:p.y-r,w:r*2,h:r*2};}),clusterIds:nodes.map(n=>n.id),visibleCoreIds:corePoints.map(c=>c.id),edges:edges.map(e=>({source:e.source,target:e.target,weight:e.weight})),positions:nodes.map(n=>({id:n.id,x:n.x,y:n.y,tx:n.tx,ty:n.ty})),selected:coreDemo.selectedCluster};}
  };
 }
 async function showCoreDetail(id){const graph=coreGraph,revision=graph.nextDetail();try{const result=await request('coreDetail',{core:id});if(graph!==coreGraph||!graph.root.isConnected||!graph.isDetail(revision))return;const c=result.core;document.querySelector('#core-detail').innerHTML=`<h2>${esc(c.statement)}</h2><p class="muted">${esc(c.context)}</p>${(c.sources||[]).length?`<p class="core-sources">${c.sources.filter(s=>/^https:\/\//.test(s.url)).map(s=>`<a href="${esc(s.url)}" target="_blank" rel="noopener noreferrer">${esc(s.title)}</a>`).join(' · ')}</p>`:''}<p>${boot.role==='learner'?c.total?`${c.percent===null?'Noch unbearbeitet':c.percent+' %'} · ${c.correct} richtig · ${c.wrong} falsch · ${c.total} verknüpfte Aufgaben`:'Noch keine direkt zugeordneten Prüfaufgaben.':'Kursleiteransicht · '+c.total+' verknüpfte Aufgaben'}</p><div class="row"><button class="secondary" id="cluster-back">Zurück zum Cluster</button>${boot.role==='learner'&&c.total?`<button data-core-practice="visual" data-core-id="${esc(id)}">Visuell üben</button><button data-core-practice="auditory" data-core-id="${esc(id)}">Auditiv üben</button>${c.wrong?`<button data-core-practice="visual" data-core-id="${esc(id)}" data-core-wrong>Falsche visuelle Aufgaben</button><button data-core-practice="auditory" data-core-id="${esc(id)}" data-core-wrong>Falsche Audioaufgaben</button>`:''}`:''}</div><details><summary>Verknüpfte Aufgaben (${result.questionCount})</summary>${result.questions.map(q=>`<p>${esc(q.title)}<small>${q.status==='correct'?'Richtig':q.status==='wrong'?'Falsch':q.status==='unanswered'?'Unbearbeitet':''} · ${esc([...new Set(q.sources.map(s=>s.title+' · '+(s.modality==='auditory'?'auditiv':'visuell')))].join(' / '))}</small></p>`).join('')}${result.questionCount>result.questions.length?'<p>Die ersten 100 Aufgaben werden angezeigt.</p>':''}</details>`;graph.render();}catch(e){showError(e);}}
