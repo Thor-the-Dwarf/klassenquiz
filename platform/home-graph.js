@@ -18,7 +18,7 @@ async function loadCoreGraph(){
   const data=await request('coreGraph',{});
   if(revision!==coreRequest||coreGraph!==graph||!graph.root.isConnected||auth!==session||cls?.id!==classId)return;
   coreDemo.offset=0;coreDemo.center=null;graph.set(data);
- }catch(e){if(coreGraph===graph&&graph.root.isConnected){graph.root.querySelector('#core-count').textContent='Cluster nicht geladen';graph.root.querySelector('#core-status').textContent=e.message;}}
+ }catch(e){if(coreGraph===graph&&graph.root.isConnected){graph.root.querySelector('#core-count').textContent='Cluster nicht geladen';graph.root.querySelector('#core-status').hidden=false;graph.root.querySelector('#core-status').textContent=e.message;}}
 }
 function createCoreGraph(root){
  const canvas=root.querySelector('canvas'),ctx=canvas.getContext('2d'),stage=root.querySelector('.core-stage'),hover=root.querySelector('.core-hover');
@@ -160,7 +160,8 @@ function createCoreGraph(root){
    if(cs.length){dx=(cs.reduce((a,c)=>a+c.x,0)/cs.length-n.baseX)*.22;dy=(cs.reduce((a,c)=>a+c.y,0)/cs.length-n.baseY)*.22;}
    const cap=Math.min(1,70/(Math.hypot(dx,dy)||1));n.tx=n.baseX+dx*cap;n.ty=n.baseY+dy*cap;
   }
-  root.querySelector('#core-status').textContent=active?(active==='exam'?'Gruppierung nach Prüfungsteil. Dieser Kurs enthält AP1-Inhalte.':'Fachliche Zuordnung der Wissenscluster · Mehrfachzuordnungen sind möglich.'):'Cluster bündeln Cores. Starke Verbindungen sind sichtbar; Auswahl zeigt auch schwächere.';
+  root.querySelector('#core-status').hidden=!active;
+  root.querySelector('#core-status').textContent=active?(active==='exam'?'Gruppierung nach Prüfungsteil. Dieser Kurs enthält AP1-Inhalte.':'Fachliche Zuordnung der Wissenscluster · Mehrfachzuordnungen sind möglich.'):'';
  }
  function animate(){
   cancelAnimationFrame(frame);targets();const start=performance.now(),from=nodes.map(n=>({x:n.x,y:n.y}));
