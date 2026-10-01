@@ -55,11 +55,15 @@ async function refreshRanking(force=false){if(deferFeedback('ranking',()=>refres
 function catalog(){return boot.catalog||[]}
 let grantDraft=null;
 const hostTopic=e=>e.topicId||(boot.presentations||[]).find(t=>t.exercises.includes(e.id))?.id||e.filename.replace(/^Uebung_/,'').replace(/_(easy|normal|tough)_\d+\.html$/i,'');
+const treeCollator=new Intl.Collator('de',{numeric:true,sensitivity:'base'});
+function compareTreeTopics(a,b){
+ const key=t=>{const m=t.id.match(/^Level(\d{2})_?(\d{2})_/);return [courseName(t.course||t.items?.[0]?.course||'PVAP1'),t.folder||'',t.level??(m?m[1]+m[2]:''),(t.title||t.label||t.id).replace(/^(?:Audio_)?Uebung_/,'').replace(/^AP1[ _]+/,'').replaceAll('_',' '),t.id]};
+ const left=key(a),right=key(b);for(let i=0;i<left.length;i++){const order=treeCollator.compare(left[i],right[i]);if(order)return order}return 0;
+}
 function hostTopics(){
  const presentations=(boot.presentations||[]).map(t=>({...t,items:catalog().filter(e=>(t.exercises||[]).includes(e.id))}));
  const all=[...presentations,...[...Map.groupBy(catalog().filter(e=>!presentations.some(t=>t.items.includes(e))),hostTopic)].map(([id,items])=>({id,title:id,ready:true,folder:items[0].folder,items}))];
- const compare=new Intl.Collator('de',{numeric:true,sensitivity:'base'}).compare;
- return all.map(t=>{const m=t.id.match(/^Level(\d{2})_?(\d{2})_/);return {...t,level:m?m[1]+m[2]:'',title:(t.title||t.id).replace(/^(?:Audio_)?Uebung_/,'').replace(/^AP1[ _]+/,'').replaceAll('_',' ')}}).sort((a,b)=>compare(courseName(a.course||a.items?.[0]?.course||'PVAP1'),courseName(b.course||b.items?.[0]?.course||'PVAP1'))||compare(a.folder||'',b.folder||'')||compare(a.level,b.level)||compare(a.title,b.title)||compare(a.id,b.id));
+ return all.map(t=>{const m=t.id.match(/^Level(\d{2})_?(\d{2})_/);return {...t,level:m?m[1]+m[2]:'',title:(t.title||t.id).replace(/^(?:Audio_)?Uebung_/,'').replace(/^AP1[ _]+/,'').replaceAll('_',' ')}}).sort(compareTreeTopics);
 }
 const courseName=id=>id==='PVAP1'?'LFPV-AP1':String(id||'').replace(/^[_*]+/,'');
 function hostTopicLabel(t){return `${t.level?`<small class="host-level">Level${esc(t.level)}</small>`:''}${esc(t.title)}`}
