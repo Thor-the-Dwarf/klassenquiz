@@ -30,7 +30,7 @@ async function playAudioPractice(){
  }catch(e){if(a.revision===revision&&audioCurrent())audioStatus(e.name==='NotAllowedError'?'Zum Vorlesen bitte „Nochmal“ drücken.':e.message||'Aufnahme nicht verfügbar. Bitte erneut versuchen.');}
 }
 function drawAudioPractice(preview=null){if(deferFeedback('audio',drawAudioPractice))return;
- const r=preview||P.round,el=$('#content');if(!preview&&!P.courses.includes('PVAP1')){stopAudioPractice();el.innerHTML='<p>Dieser Kurs ist derzeit nicht freigegeben.</p>';return;}
+ const r=preview||P.round,el=$('#content');if(!preview&&!P.courses.length){stopAudioPractice();el.innerHTML='<p>Dieser Kurs ist derzeit nicht freigegeben.</p>';return;}
  const done=r.tasks.every(t=>t.submission||t.pending);
  if(done){stopAudioPractice();const confirmed=r.tasks.filter(t=>t.submission),correct=confirmed.filter(t=>t.submission.score===1000).length;
   el.innerHTML=`<section class="practice-round audio-round"><h2>Deine Auswertung</h2><p>${correct} von ${r.tasks.length} richtig${confirmed.length<r.tasks.length?' · Antworten werden noch gespeichert':''}</p>${r.tasks.map((t,i)=>`<article class="feedback"><strong>${i+1}. ${esc(t.title)}</strong><p>${t.submission?(t.submission.score===1000?'✓ Richtig beantwortet':'✕ Falsch beantwortet'):'Antwort vorgemerkt'} · Deine Antwort: ${esc(t.choices.find(c=>c.id===(t.submission?.answer||t.pending||[])[0])?.label)}</p>${t.submission?`<p>${esc(t.explanation)}</p>`:''}</article>`).join('')}<button data-practice-new>Noch einmal üben</button></section>`;return;}
