@@ -7,7 +7,7 @@ function classQuizButtons(){
  host.hidden=!ready||boot.role!=='host';learner.hidden=!ready||boot.role!=='learner';
  host.disabled=!ready||!cls||!!cls.archived||!!discussion.state;
  host.textContent=CQ.state&&CQ.state.phase!=='finished'?'Klassenquiz öffnen':'Zum Klassenquiz einladen';
- learner.disabled=!ready||!CQ.state||view==='discussion';learner.classList.toggle('active',typeof view!=='undefined'&&view==='classquiz');
+ learner.disabled=!ready||!CQ.state||CQ.state.phase==='finished'||view==='discussion';learner.classList.toggle('active',typeof view!=='undefined'&&view==='classquiz');
  const unread=!!CQ.state&&CQ.state.phase!=='finished'&&!CQ.seen.has(CQ.state.id);learner.classList.toggle('unread',unread);learner.setAttribute('aria-label',unread?'Klassenquiz – neue Einladung':'Klassenquiz');
 }
 function acceptClassQuiz(state){
@@ -47,8 +47,8 @@ function drawClassQuiz(){
  const key=[s.id,s.index,s.phase,s.revision,s.joined,!!s.own].join(':');
  if(CQ.key===key&&$('#cq-main')){cqBoard();cqTick();return}CQ.key=key;
  let body='';
- if(!host&&!s.joined){body=`<h2>Einladung zum Klassenquiz</h2><p>${s.total} Aufgaben · Standard 60 Sekunden je Aufgabe.</p><p>Beim Beitreten sind dein Anzeigename und deine Quizpunkte für die teilnehmende Klasse und die Kursleitung sichtbar. Diese Bestenliste beginnt bei jedem neuen Klassenquiz bei null.</p><button data-cq-join ${s.phase==='finished'?'disabled':''}>Beitreten</button>`}
- else if(s.phase==='finished'){body='<h2>Klassenquiz beendet</h2><p>Das ist der Endstand dieses Klassenquiz.</p>'}
+ if(s.phase==='finished'){body='<h2>Klassenquiz beendet</h2><p>Das ist der Endstand dieses Klassenquiz.</p>'}
+ else if(!host&&!s.joined){body=`<h2>Einladung zum Klassenquiz</h2><p>${s.total} Aufgaben · Standard 60 Sekunden je Aufgabe.</p><p>Beim Beitreten sind dein Anzeigename und deine Quizpunkte für die teilnehmende Klasse und die Kursleitung sichtbar. Diese Bestenliste beginnt bei jedem neuen Klassenquiz bei null.</p><button data-cq-join ${s.phase==='finished'?'disabled':''}>Beitreten</button>`}
  else if(host){body=`<section class="cq-current"><div class="cq-task">${cqTask(s.question,true,s.phase==='invite'?[]:s.question.solution)}</div>${s.phase==='invite'?'':cqFeedback(s.question,s.question.solution)}</section><section class="cq-controls"><div class="row">${s.next?`<label>Zeit für ${s.phase==='invite'?'die erste':'die nächste'} Aufgabe (Sekunden)<input id="cq-duration" type="number" min="5" max="600" step="1" value="${CQ.duration}"></label>`:''}${s.phase==='invite'?'<button data-cq-command="start">Aufgabe für alle starten</button>':s.phase==='question'?'<button data-cq-command="reveal">Jetzt auflösen</button>':s.next?'<button data-cq-command="next">Nächste Aufgabe starten</button>':''}<button class="secondary" data-cq-command="finish">Klassenquiz beenden</button></div>${s.phase!=='invite'&&s.next?`<details class="cq-next"><summary>Nächste Aufgabe ansehen</summary>${cqTask(s.next,true,[])}</details>`:''}</section>`}
  else if(s.phase==='invite'){body='<h2>Du bist dabei!</h2><p>Die Kursleitung startet die erste Aufgabe.</p>'}
  else if(s.question){const locked=s.phase!=='question'||!!s.own||!!CQ.pending||cqSeconds()===0;body=cqTask(s.question,locked)+(s.phase==='question'?s.own?'<p role="status">Antwort abgegeben. Warte auf die Auflösung.</p>':`<button data-cq-submit ${CQ.pending?'disabled':''}>${CQ.pending?'Antwort wird gesendet …':'Antwort abgeben'}</button><p class="cq-send-status" role="status">${esc(CQ.sendError)}</p>`:`${cqFeedback(s.question,s.own?.answer||[])}<section class="cq-result"><strong>${s.own?s.own.score===1000?'Vollständig richtig – 1.000 Punkte plus möglichen Bonus':'Nicht vollständig richtig – 0 Quizpunkte':'Keine Antwort abgegeben'}</strong><p>${s.question.solution.map(id=>esc(s.question.choices.find(c=>c.id===id)?.label||id)).join(' · ')}</p><p>${esc(s.question.explanation)}</p></section>`)}
@@ -63,7 +63,7 @@ document.addEventListener('click',e=>{
  void guarded(async()=>{
   if(b.id==='classquiz-invite'){if(CQ.state&&CQ.state.phase!=='finished'){CQ.key='';return navigate('classquiz')}return navigate('classquiz-invite')}
   if(b.hasAttribute('data-cq-create')){acceptClassQuiz(await request('classQuizCreate',{requestId:crypto.randomUUID()}));CQ.key='';return navigate('classquiz')}
-  if(b.id==='learner-classquiz'){if(!CQ.state)return;practiceCache();CQ.previous=view;CQ.seen.add(CQ.state.id);CQ.key='';return navigate('classquiz')}
+  if(b.id==='learner-classquiz'){if(!CQ.state||CQ.state.phase==='finished')return;practiceCache();CQ.previous=view;CQ.seen.add(CQ.state.id);CQ.key='';return navigate('classquiz')}
   if(b.hasAttribute('data-cq-join')){acceptClassQuiz(await request('classQuizJoin',{quiz:CQ.state.id}));return}
   if(b.hasAttribute('data-cq-leave')){document.body.classList.remove('classquiz-open');return navigate(['classquiz','classquiz-invite'].includes(CQ.previous)?'home':CQ.previous)}
   if(b.dataset.cqCommand){acceptClassQuiz(await request('classQuizControl',{quiz:CQ.state.id,revision:CQ.state.revision,command:b.dataset.cqCommand,seconds:CQ.duration}));return}
