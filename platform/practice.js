@@ -11,7 +11,7 @@ function practiceLimitToast(){
 const practiceLevels=['easy','normal','tough'];
 const practiceKey=id=>'lp-round-'+boot.me.id+'-'+id;
 async function practiceInit(){const data=await request('practiceTopics',{modality:P.mode==='auditory'?'auditory':'visual'});P.topics=data.topics;P.courses=data.courses||[];P.active=P.courses.length?(data.active?.id||null):null;P.round=null;P.selection.clear();P.choosing=false;P.mode=null;P.knowledge=false;P.knowledgeData=null}
-function practiceEffective(t){let i=Math.min(t.unlocked,2);while(i>=0&&!t.available.includes(practiceLevels[i]))i--;return i<0?null:practiceLevels[i]}
+function practiceEffective(t){if(P.mode!=='auditory')return t.available?.length?'all':null;let i=Math.min(t.unlocked,2);while(i>=0&&!t.available.includes(practiceLevels[i]))i--;return i<0?null:practiceLevels[i]}
 function drawPracticeSidebar(){
  const side=$('#sidebar');const openFolders=new Set([...side.querySelectorAll('details[open]')].map(el=>el.querySelector(':scope > summary')?.textContent));side.closest('.shell')?.classList.toggle('practice-browsing',view==='practice'&&(P.choosing||P.mode==='infographics'));side.classList.toggle('practice-selecting',P.choosing);
  const topics=P.topics;for(const id of P.selection){const t=topics.find(t=>t.id===id);if(!t||!practiceEffective(t)||[...P.selection].indexOf(id)>=practiceTopicLimit)P.selection.delete(id)}
@@ -32,7 +32,7 @@ function drawPracticeSidebar(){
 function knowledgeBar(t){
  const k=P.knowledgeData?.topics.find(x=>x.id===t.id);if(!k)return '<small class="practice-level">Wissensstand wird geladen …</small>';
  const average=boot.me.share&&k.average!==null&&k.average!==undefined?k.average:null;
- return `<span class="knowledge-meter" role="img" aria-label="Wissensstand ${k.percent} Prozent${average===null?'':`, Klassendurchschnitt ${average} Prozent`}" title="${k.answered} von ${k.total} Aufgaben bearbeitet${average===null?'':` · Klassendurchschnitt: ${average} % (${k.people} Personen mit Freigabe)`}"><span class="knowledge-fill" style="width:${k.percent}%"></span>${average===null?'':`<span class="knowledge-average" style="left:clamp(1px,${average}%,calc(100% - 2px))"></span>`}<span class="knowledge-label">${k.percent.toLocaleString('de-DE')} %</span></span>`;
+ return `<span class="knowledge-meter" role="img" aria-label="Wissensstand ${k.percent} Prozent${average===null?'':`, Klassendurchschnitt ${average} Prozent`}" title="Wissensstand ${k.percent.toLocaleString('de-DE')} %${average===null?'':` · Klassendurchschnitt: ${average} % (${k.people} Personen mit Freigabe)`}"><span class="knowledge-fill" style="width:${k.percent}%"></span>${average===null?'':`<span class="knowledge-average" style="left:clamp(1px,${average}%,calc(100% - 2px))"></span>`}<span class="knowledge-label">${k.percent.toLocaleString('de-DE')} %</span></span>`;
 }
 async function refreshKnowledge(){
  const revision=++P.knowledgeRevision,session=auth;if(!P.knowledge)return;
@@ -43,7 +43,7 @@ function practiceHistoryKey(){return 'lp-round-history-'+boot.me.id+'-'+cls.id}
 function practiceResumeButtons(mode=null){
  const ids=storage.get(practiceHistoryKey())||[];
  const rounds=ids.map(id=>storage.get(practiceKey(id))).filter(r=>r&&!r.completed&&!r.tasks.every(t=>t.submission||t.pending)&&(!mode||(r.modality||'visual')===mode));
- let html=rounds.map(r=>`<button data-practice-resume="${esc(r.id)}" class="secondary">${P.round?.id===r.id?'Aktuellen Lauf fortsetzen':'Fortsetzen'} · ${r.modality==='auditory'?'auditiv':'visuell'}<small>${esc((boot.presentations||[]).find(t=>t.id===r.tasks[r.position]?.topic)?.title||'Übungsrunde')} · Aufgabe ${r.position+1}/${r.tasks.length}</small></button>`).join('');
+ let html=rounds.map(r=>`<button data-practice-resume="${esc(r.id)}" class="secondary">${P.round?.id===r.id?'Aktuellen Lauf fortsetzen':'Fortsetzen'} · ${r.modality==='auditory'?'auditiv':'visuell'}<small>${esc((boot.presentations||[]).find(t=>t.id===r.tasks[r.position]?.topic)?.title||'Übungsrunde')}${r.modality==='auditory'?` · Aufgabe ${r.position+1}/${r.tasks.length}`:''}</small></button>`).join('');
  if(P.active&&!rounds.some(r=>r.id===P.active)&&!ids.includes(P.active))html+=`<button data-practice-resume="${esc(P.active)}" class="secondary">Letzten Lauf fortsetzen</button>`;
  return html;
 }
@@ -73,14 +73,14 @@ function practiceAck(item,result){if(!['roundSave','roundAnswer'].includes(item.
 function drawPracticeRound(){if(deferFeedback('practice',drawPracticeRound))return;
  const r=P.round,el=$('#content');if(r?.modality==='auditory')return drawAudioPractice();if(!P.courses.length){el.innerHTML='<p>Dieser Kurs ist derzeit nicht freigegeben.</p>';return}if(!r){el.innerHTML='<p>Wähle links deine Übungen aus.</p>';return}
  const t=r.tasks[r.position],draft=r.draft[t.key]||[],answer=richAnswer(t,t.submission?.answer||t.pending||draft),locked=!!(t.submission||t.pending),done=r.tasks.filter(t=>t.submission).length;
- let body=`<div class="practice-heading"><span>${esc((boot.presentations||[]).find(x=>x.id===t.topic)?.title||t.topic)} · ${esc(t.difficulty)}</span><span>Aufgabe ${r.position+1} / ${r.tasks.length}</span></div><h2>${esc(t.title)}</h2>${t.prompt?`<p>${esc(t.prompt)}</p>`:''}`;
+ let body=`<div class="practice-heading"><span>${esc((boot.presentations||[]).find(x=>x.id===t.topic)?.title||t.topic)}</span></div><h2>${esc(t.title)}</h2>${t.prompt?`<p>${esc(t.prompt)}</p>`:''}`;
  const rich=richTask(t,answer,locked,'practice');if(rich!==null)body+=rich;else if(t.kind==='choice')body+=`${t.multi?'<p>Mehrere Antworten auswählen.</p>':''}<div class="answers">${t.choices.map(c=>`<button data-practice-choice="${esc(c.id)}" aria-pressed="${answer.includes(c.id)}" class="answer ${answer.includes(c.id)?'selected':''} ${t.solution?.includes(c.id)?'correct':''}" ${locked?'disabled':''}>${esc(c.label)}</button>`).join('')}</div>`;
  else{if(t.kind==='cloze')body+=`<p>${t.parts.map(p=>p===null?' […] ':esc(p)).join('')}</p>`;body+=t.fields.map((field,i)=>`<label class="field">${esc(field)}<select data-practice-field="${i}" ${locked?'disabled':''}><option value="">Bitte auswählen</option>${t.choices.map(c=>`<option value="${esc(c.id)}" ${answer[i]===c.id?'selected':''}>${esc(c.label)}</option>`).join('')}</select></label>`).join('')}
  if(t.submission)body+=`<section class="feedback"><strong>${t.submission.score} / 1.000 Punkte</strong><p>${t.solution.map(id=>esc(t.choices.find(c=>c.id===id)?.label||id)).join(' · ')}</p><p>${esc(t.explanation)}</p></section>`;
  else if(t.pending)body+='<p role="status">Antwort lokal vorgemerkt – wird übertragen.</p>';
  const next=r.position<r.tasks.length-1;
  const complete=practiceAnswerComplete(t,answer);
- el.innerHTML=`<section class="practice-round">${body}<footer class="practice-footer"><div class="practice-navigation"><button data-practice-prev class="practice-arrow" aria-label="Zur vorherigen Aufgabe" title="Pfeil nach oben" ${r.position?'':'disabled'}>↑</button><button data-practice-answer class="practice-evaluate" title="Enter" ${locked||!complete?'disabled':''}>${locked?'Auswertung':'Auswerten'}</button><button data-practice-next class="practice-arrow" aria-label="Zur nächsten Aufgabe" title="Pfeil nach unten" ${locked&&next?'':'disabled'}>↓</button></div><span class="practice-progress" aria-label="Aufgabenposition">${r.position+1}/${r.tasks.length}</span></footer>${done===r.tasks.length?'<p class="saved">Übungsrunde abgeschlossen.</p><button data-practice-new>Neue Runde</button>':''}</section>`;
+ el.innerHTML=`<section class="practice-round">${body}<footer class="practice-footer"><div class="practice-navigation"><button data-practice-prev class="practice-arrow" aria-label="Zur vorherigen Aufgabe" title="Pfeil nach oben" ${r.position?'':'disabled'}>↑</button><button data-practice-answer class="practice-evaluate" title="Enter" ${locked||!complete?'disabled':''}>${locked?'Auswertung':'Auswerten'}</button><button data-practice-next class="practice-arrow" aria-label="Zur nächsten Aufgabe" title="Pfeil nach unten" ${locked&&next?'':'disabled'}>↓</button></div></footer>${done===r.tasks.length?'<p class="saved">Übungsrunde abgeschlossen.</p><button data-practice-new>Neue Runde</button>':''}</section>`;
 
 }
 document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const d=b.dataset;if(!Object.keys(d).some(k=>k.startsWith('practice')))return;guarded(async()=>{
