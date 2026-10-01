@@ -1,6 +1,6 @@
 'use strict';
 const coreDemo={active:new Set(),selected:null,selectedCluster:null,search:'',offset:0,center:null,camera:{zoom:1,x:0,y:0}};
-const coreModes=[['arp','Nach Ausbildungsrahmenplan clustern','#52e6ad'],['lf','Nach Lernfeldern clustern','#b595ff'],['exam','Nach Prüfungsteil clustern','#f1cf77']];
+const coreModes=[['arp','Nach Ausbildungsrahmenplan gruppieren','#52e6ad'],['lf','Nach Lernfeldern gruppieren','#b595ff'],['exam','Nach Prüfungsteil gruppieren','#f1cf77']];
 let coreGraph=null,coreRequest=0;
 new MutationObserver(()=>{if(coreGraph&&!coreGraph.root.isConnected){coreGraph.destroy();coreGraph=null;}}).observe(document.querySelector('#root'),{childList:true,subtree:true});
 const coreSymbols={binary:'M6 5h4v14H6zM16 5h2v14',network:'M12 4v7M4 19v-5h16v5M12 14v5M9 2h6v5H9z',chip:'M6 6h12v12H6zM9 9h6v6H9zM2 9h4M2 15h4M18 9h4M18 15h4M9 2v4M15 2v4M9 18v4M15 18v4',storage:'M4 4h16v16H4zM7 8h10M7 12h10M7 16h3',plug:'M8 2v6M16 2v6M6 8h12v5l-4 4v5M10 17l-4-4',shield:'M12 2l8 3v7c0 5-8 10-8 10S4 17 4 12V5zM8 12l3 3 5-6',document:'M5 2h10l4 4v16H5zM8 10h8M8 14h8M8 18h5',chart:'M3 3v18h19M7 17v-5M12 17V7M17 17V3',code:'M8 5l-6 7 6 7M16 5l6 7-6 7M14 3l-4 18'};
