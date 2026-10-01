@@ -39,9 +39,9 @@ function createCoreGraph(root){
  }
  function showHover(item){
   const key=item?.kind+':'+item?.id;if(hovered?.key===key)return;
-  hovered=item?{...item,key}:null;hover.hidden=!item;hover.replaceChildren();
-  if(item){const c=item.kind==='core'?model.cores.get(item.id):byId.get(item.id);if(!c)return;
-   hover.innerHTML=`${item.kind==='core'?`<svg viewBox="0 0 24 24" class="core-symbol" aria-hidden="true"><path d="${coreSymbols[c.symbol]||coreSymbols.document}"/></svg>`:''}<div class="core-hover-caption"><strong>${esc(c.statement||c.title)}</strong><span>${esc(item.kind==='core'?c.context:c.coreIds.length+' Cores · auswählen und hineinzoomen')}</span></div>`;
+  hovered=item?{...item,key}:null;hover.hidden=item?.kind!=='core';hover.replaceChildren();
+  if(item?.kind==='core'){const c=model.cores.get(item.id);if(!c)return;
+   hover.innerHTML=`<svg viewBox="0 0 24 24" class="core-symbol" aria-hidden="true"><path d="${coreSymbols[c.symbol]||coreSymbols.document}"/></svg><div class="core-hover-caption"><strong>${esc(c.statement)}</strong><span>${esc(c.context)}</span></div>`;
   }
   render();
  }
