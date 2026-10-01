@@ -54,6 +54,7 @@ const coreClusterDefinitions=[
  {id:'verbesserung',title:'Kontinuierliche Verbesserung',coreIds:['pdca','soll-ist-vergleich','wirksamkeitsnachweis','retrospektive','verbesserung-pruefen','nacharbeit','prozessziel']},
  {id:'transportprotokolle',title:'TCP und UDP',coreIds:['tcp','udp','port-network','standardports','port-kein-vertrauen','quic']}
 ]);
+coreClusterDefinitions.push(...[{"id": "LF10a_Level01", "title": "Benutzerschnittstellen verstehen", "topic": "LF10a_Level01"}, {"id": "LF10a_Level02", "title": "UI Typen und Interaktionsformen", "topic": "LF10a_Level02"}, {"id": "LF10a_Level03", "title": "Softwarequalität für Benutzerschnittstellen", "topic": "LF10a_Level03"}, {"id": "LF10a_Level04", "title": "Qualitätssicherung und Tests", "topic": "LF10a_Level04"}, {"id": "LF10a_Level05", "title": "User Experience mit dem UX Honeycomb", "topic": "LF10a_Level05"}, {"id": "LF10a_Level06", "title": "UX Prinzipien für gute Bedienung", "topic": "LF10a_Level06"}, {"id": "LF10a_Level07", "title": "HTML Grundlagen und Syntax", "topic": "LF10a_Level07"}, {"id": "LF10a_Level08", "title": "HTML Strukturelemente und Informationsarchitektur", "topic": "LF10a_Level08"}, {"id": "LF10a_Level09", "title": "CSS Grundlagen und Einbindung", "topic": "LF10a_Level09"}, {"id": "LF10a_Level10", "title": "CSS Selektoren Kaskade und Spezifität", "topic": "LF10a_Level10"}, {"id": "LF10a_Level11", "title": "Farben Hintergründe und visuelle Wirkung", "topic": "LF10a_Level11"}, {"id": "LF10a_Level12", "title": "Statische und dynamische Webseiten", "topic": "LF10a_Level12"}, {"id": "LF10a_Level13", "title": "PHP Grundlagen und Formularverarbeitung", "topic": "LF10a_Level13"}, {"id": "LF10a_Level14", "title": "PHP und Datenbankzugriff", "topic": "LF10a_Level14"}, {"id": "LF10a_Level15", "title": "Webanwendung typische Fehler und Bereitstellung", "topic": "LF10a_Level15"}]);
 // Short display labels refer to KMK learning fields and FIAusbV training sections.
 const clusterCurriculum={
  lf:[
@@ -87,7 +88,7 @@ function buildKnowledgeClusters(cores){
   const members=[...ids].map(id=>byId.get(id)),clusters={};
   for(const mode of ['arp','lf','exam'])clusters[mode]=[...new Set([...curriculumGroups(def.id,mode),...members.flatMap(c=>c.clusters?.[mode]||[])])];
   const answered=members.some(c=>c.percent!==null);
-  return {id:def.id,title:def.title,coreIds:[...ids],clusters,percent:answered?Math.round(members.reduce((sum,c)=>sum+(c.percent||0),0)/members.length):null};
+  return {id:def.id,title:def.title,coreIds:[...ids],clusters,percent:answered?Math.round(members.filter(c=>c.percent!==null).reduce((sum,c)=>sum+c.percent,0)/members.filter(c=>c.percent!==null).length):null};
  }).filter(n=>n.coreIds.length);
  // Do not silently drop future Cores whose topic has not been assigned yet.
  const assigned=new Set(nodes.flatMap(n=>n.coreIds)),unassigned=cores.filter(c=>!assigned.has(c.id));
