@@ -9,7 +9,9 @@ function flashFeedback(){
 }
 function syncFeedbackAvailability(){
  const button=document.querySelector('#learner-feedback');
- button.disabled=!feedbackLocked()&&(!document.body.classList.contains('learner-layout')||!feedbackContext());
+ const available=document.body.classList.contains('learner-layout')&&(feedbackLocked()||!!feedbackContext());
+ button.hidden=!available;
+ button.disabled=!available;
 }
 new MutationObserver(syncFeedbackAvailability).observe(document.querySelector('#root'),{childList:true,subtree:true});
 function toggleFeedback(open){
@@ -34,7 +36,6 @@ function toggleFeedback(open){
 function syncFeedback(){
  syncHostFeedback();
  const learner=document.body.classList.contains('learner-layout');
- document.querySelector('#learner-feedback').hidden=!learner;
  syncFeedbackAvailability();
  if(!learner){feedbackDrafts.clear();feedbackDraft=null;feedbackPending.clear();toggleFeedback(false);document.querySelector('#feedback-form').reset();document.querySelector('#feedback-rating-value').value='5';}
 }
