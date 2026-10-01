@@ -52,7 +52,7 @@ function drawClassQuiz(){
  else if(host){body=`<section class="cq-current"><div class="cq-task">${cqTask(s.question,true,s.phase==='invite'?[]:s.question.solution)}</div>${s.phase==='invite'?'':cqFeedback(s.question,s.question.solution)}</section><section class="cq-controls"><div class="row">${s.next?`<label>Zeit für ${s.phase==='invite'?'die erste':'die nächste'} Aufgabe (Sekunden)<input id="cq-duration" type="number" min="5" max="600" step="1" value="${CQ.duration}"></label>`:''}${s.phase==='invite'?'<button data-cq-command="start">Aufgabe für alle starten</button>':s.phase==='question'?'<button data-cq-command="reveal">Jetzt auflösen</button>':s.next?'<button data-cq-command="next">Nächste Aufgabe starten</button>':''}<button class="secondary" data-cq-command="finish">Klassenquiz beenden</button></div>${s.phase!=='invite'&&s.next?`<details class="cq-next"><summary>Nächste Aufgabe ansehen</summary>${cqTask(s.next,true,[])}</details>`:''}</section>`}
  else if(s.phase==='invite'){body='<h2>Du bist dabei!</h2><p>Die Kursleitung startet die erste Aufgabe.</p>'}
  else if(s.question){const locked=s.phase!=='question'||!!s.own||!!CQ.pending||cqSeconds()===0;body=cqTask(s.question,locked)+(s.phase==='question'?s.own?'<p role="status">Antwort abgegeben. Warte auf die Auflösung.</p>':`<button data-cq-submit ${CQ.pending?'disabled':''}>${CQ.pending?'Antwort wird gesendet …':'Antwort abgeben'}</button><p class="cq-send-status" role="status">${esc(CQ.sendError)}</p>`:`${cqFeedback(s.question,s.own?.answer||[])}<section class="cq-result"><strong>${s.own?s.own.score===1000?'Vollständig richtig – 1.000 Punkte plus möglichen Bonus':'Nicht vollständig richtig – 0 Quizpunkte':'Keine Antwort abgegeben'}</strong><p>${s.question.solution.map(id=>esc(s.question.choices.find(c=>c.id===id)?.label||id)).join(' · ')}</p><p>${esc(s.question.explanation)}</p></section>`)}
- $('#content').innerHTML=`<section class="classquiz"><div class="cq-heading"><h1>Klassenquiz</h1>${host?`<span>Aufgabe ${s.index+1} / ${s.total}</span>`:''}<strong id="cq-clock" role="timer"></strong>${host?`<span id="cq-count"></span><button class="secondary" data-cq-leave>Ansicht verlassen</button>`:''}</div><div class="cq-layout"><div id="cq-main" class="${host?'cq-host':'cq-learner'}">${body}</div><details class="cq-ranking" open><summary>Quiz-Bestenliste</summary><aside id="cq-board"></aside></details></div></section>`;cqBoard();cqTick();
+ $('#content').innerHTML=`<section class="classquiz"><div class="cq-heading"><h1>Klassenquiz</h1>${host?`<span>Aufgabe ${s.index+1} / ${s.total}</span>`:''}<strong id="cq-clock" role="timer"></strong>${host?`<span id="cq-count"></span><button class="secondary" data-cq-leave>Ansicht verlassen</button>`:''}</div><div class="cq-layout"><div id="cq-main" class="${host?'cq-host':'cq-learner'}">${body}</div><details class="cq-ranking" open><summary>Quiz-Bestenliste</summary><aside id="cq-board"></aside></details></div></section>`;cqBoard();cqTick();cqArrangeFeedback();
 }
 function classQuizRich(b){const t=CQ.state?.question;if(!t||boot.role==='host'||CQ.pending||CQ.state.own||cqSeconds()===0)return;let a=CQ.draft;if(b.dataset.richDecision)a=[b.dataset.richDecision];else{const d=t.decisions.find(d=>d.id===a[0]),id=b.dataset.richReason;if(!d)return;a=d.mode==='multi'?(a.includes(id)?a.filter(v=>v!==id):[...a,id]):[a[0],id]}CQ.draft=a;CQ.key='';drawClassQuiz()}
 document.addEventListener('input',e=>{if(e.target.id==='cq-duration')CQ.duration=Number(e.target.value);if(e.target.dataset.cqField!==undefined&&!CQ.pending&&!CQ.state?.own){CQ.draft[Number(e.target.dataset.cqField)]=e.target.value;cqTick()}});
@@ -92,6 +92,27 @@ function cqFeedback(t,a){
   const choice=typeof r.correct==='boolean',picked=choice?a.includes(r.key):a[i]!==undefined;
   const good=choice?picked&&r.correct:String(a[i]??'').trim()===String(r.answer).trim(),missing=choice&&!picked&&r.correct;
   const tone=good?'good':missing?'warn':picked?'bad':'',status=good?'RICHTIG':missing?'FEHLT':picked?'FALSCH':'';
-  return `<div class="bubble ${tone}"><div class="bubble-title"><span>${esc(r.title)}</span><strong>${status}</strong></div>${!choice?`<p>Richtige Antwort: ${esc(label(r.answer))}</p>`:''}<p>${esc(r.explanation)}</p></div>`;
+  return `<div class="bubble ${tone}" data-cq-feedback-key="${esc(r.key)}" data-cq-feedback-index="${i}"><div class="bubble-title"><span>${esc(r.title)}</span><strong>${status}</strong></div>${!choice?`<p>Richtige Antwort: ${esc(label(r.answer))}</p>`:''}<p>${esc(r.explanation)}</p></div>`;
  }).join('')+'</div>';
+}
+
+let cqLineObserver;
+function cqArrangeFeedback(){
+ cqLineObserver?.disconnect();
+ const main=document.querySelector('#cq-main');if(!main)return;
+ const bubbles=main.querySelector('.cq-bubbles');if(!bubbles)return;
+ let group=bubbles.closest('.cq-current');
+ if(!group){group=document.createElement('section');group.className='cq-current';const task=document.createElement('div');task.className='cq-task';main.insertBefore(group,main.firstChild);while(group.nextSibling&&group.nextSibling!==bubbles)task.append(group.nextSibling);group.append(task,bubbles);}
+ const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.classList.add('cq-connections');svg.setAttribute('aria-hidden','true');group.append(svg);
+ const draw=()=>{
+  if(!group.isConnected)return;const rect=group.getBoundingClientRect();svg.setAttribute('viewBox',`0 0 ${rect.width} ${rect.height}`);svg.replaceChildren();
+  for(const bubble of bubbles.querySelectorAll('[data-cq-feedback-key]')){
+   const key=bubble.dataset.cqFeedbackKey,index=bubble.dataset.cqFeedbackIndex,task=group.querySelector('.cq-task');
+   const source=[...task.querySelectorAll('[data-cq-choice],[data-rich-decision]')].find(e=>(e.dataset.cqChoice??e.dataset.richDecision)===key)||[...task.querySelectorAll('[data-cq-field]')].find(e=>e.dataset.cqField===index)?.closest('label');if(!source)continue;
+   const a=source.getBoundingClientRect(),b=bubble.getBoundingClientRect(),side=b.left>=a.right;
+   const x1=(side?a.right:a.left+a.width/2)-rect.left,y1=(side?a.top+a.height/2:a.bottom)-rect.top,x2=(side?b.left:b.left+b.width/2)-rect.left,y2=(side?b.top+b.height/2:b.top)-rect.top;
+   const path=document.createElementNS(svg.namespaceURI,'path');path.setAttribute('d',side?`M${x1},${y1} C${x1+(x2-x1)/2},${y1} ${x1+(x2-x1)/2},${y2} ${x2},${y2}`:`M${x1},${y1} C${x1},${y1+20} ${x2},${y2-20} ${x2},${y2}`);path.setAttribute('class',bubble.className.replace('bubble',''));svg.append(path);
+  }
+ };
+ cqLineObserver=new ResizeObserver(draw);cqLineObserver.observe(group);for(const el of group.querySelectorAll('.cq-task,.bubble'))cqLineObserver.observe(el);requestAnimationFrame(draw);
 }
