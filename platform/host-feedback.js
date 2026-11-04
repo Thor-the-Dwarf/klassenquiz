@@ -84,7 +84,7 @@ async function openRealFeedback(id){
  if(snap.task){
   const t=snap.task;if(snap.kind==='audio')drawAudioPractice({id,position:0,tasks:[t],draft:{}});
   else{const rich=richTask(t,richAnswer(t,[]),true,'feedback');let fields=rich;if(fields===null)fields=t.kind==='choice'?`<div class="answers">${t.choices.map(c=>`<button class="answer" disabled>${esc(c.label)}</button>`).join('')}</div>`:`${t.kind==='cloze'?`<p>${t.parts.map(p=>p===null?' […] ':esc(p)).join('')}</p>`:''}${(t.fields||[]).map(field=>`<label>${esc(field)}<select disabled><option>Bitte auswählen</option>${t.choices.map(c=>`<option>${esc(c.label)}</option>`).join('')}</select></label>`).join('')}`;
-  $('#content').innerHTML=`<section class="practice-round feedback-read-task"><div class="practice-heading">${esc(snap.title)} · ${esc(t.difficulty)}</div><h2>${esc(t.title)}</h2>${t.prompt?`<p>${esc(t.prompt)}</p>`:''}${fields}</section>`;}
+  $('#content').innerHTML=`<section class="practice-round feedback-read-task"><div class="practice-heading">${esc(snap.title)} · ${esc(t.difficulty)}</div><h2>${esc(t.title)}</h2>${t.prompt?`<p>${esc(t.prompt)}</p>`:''}${practiceStimulus(t)}${fields}</section>`;}
   if(snap.media){const blob=await feedbackRequest('media',{id},true,true);if(revision!==hostFeedbackRevision)return;hostFeedbackUrl=URL.createObjectURL(blob);const audio=document.createElement('audio');audio.controls=true;audio.className='feedback-snapshot-audio';audio.src=hostFeedbackUrl;$('#content').prepend(audio);}return;
  }
  $('#content').innerHTML=`<section class="presentation-view"><div id="feedback-slide" class="slide-stage">Folie wird geladen …</div><div class="slide-navigation">${esc(snap.title)} · Folie ${snap.slide+1}</div></section>`;
