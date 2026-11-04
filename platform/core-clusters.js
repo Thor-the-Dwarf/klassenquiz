@@ -86,7 +86,7 @@ function buildKnowledgeClusters(cores){
   // A statement's reviewed prerequisite is also part of its knowledge cluster.
   const pending=[...ids];while(pending.length){for(const id of byId.get(pending.pop())?.usesCoreIds||[])if(byId.has(id)&&!ids.has(id)){ids.add(id);pending.push(id);}}
   const members=[...ids].map(id=>byId.get(id)),clusters={};
-  for(const mode of ['arp','lf','exam'])clusters[mode]=[...new Set([...curriculumGroups(def.id,mode),...members.flatMap(c=>c.clusters?.[mode]||[])])];
+  for(const mode of ['arp','lf','exam'])clusters[mode]=def.clusters?.[mode]??[...new Set([...curriculumGroups(def.id,mode),...members.flatMap(c=>c.clusters?.[mode]||[])])];
   const answered=members.some(c=>c.percent!==null);
   return {id:def.id,title:def.title,coreIds:[...ids],clusters,percent:answered?Math.round(members.filter(c=>c.percent!==null).reduce((sum,c)=>sum+c.percent,0)/members.filter(c=>c.percent!==null).length):null};
  }).filter(n=>n.coreIds.length);
