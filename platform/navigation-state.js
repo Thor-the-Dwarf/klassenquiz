@@ -9,7 +9,7 @@ function saveNavigation(){
   host:{panel:hostNavigation.panel,base:hostNavigation.base,positions:[...hostNavigation.positions]},
   slide:slidesView.topic?{topic:slidesView.topic.id,index:slidesView.index}:null,
   practice:{mode:P.mode,choosing:P.choosing,selection:[...P.selection],round:P.round?.id,knowledge:P.knowledge},
-  grants:grantDraft?{classId:grantDraft.classId,courses:[...grantDraft.courses],topics:[...grantDraft.topics]}:null,
+  grants:grantDraft?{classId:grantDraft.classId,base:grantDraft.base,courses:[...grantDraft.courses],topics:[...grantDraft.topics]}:null,
   discussion:{id:discussion.state?.id,previous:discussion.previous,previousSelected:discussion.previousSelected,treeOpen:discussion.treeOpen,preview:discussion.preview},
   feedback:navigationFeedback,praxisPrevious,scroll:scrollY});
 }
@@ -27,7 +27,7 @@ async function restoreNavigation(){
   expanded.clear();for(const entry of saved.expanded||[])expanded.set(...entry);
   selected=saved.selected;chartMode=saved.chartMode||'latest';chartDifficulty=saved.chartDifficulty||'easy';chartSelection.clear();for(const id of saved.chartSelection||[])chartSelection.add(id);
   Object.assign(hostNavigation,{panel:saved.host?.panel||null,base:saved.host?.base||null,positions:new Map(saved.host?.positions||[])});
-  grantDraft=saved.grants?.classId===cls.id?{classId:cls.id,courses:new Set(saved.grants.courses),topics:new Set(saved.grants.topics)}:null;
+  grantDraft=saved.grants?.classId===cls.id&&saved.grants.base===grantBaseline()?{classId:cls.id,base:saved.grants.base,courses:new Set(saved.grants.courses),topics:new Set(saved.grants.topics)}:null;
   const topic=boot.presentations?.find(t=>t.id===saved.slide?.topic);
   if(topic){slidesView.topic=topic;slidesView.index=Math.max(0,Math.min(saved.slide.index||0,topic.slides-1));}
   if(boot.role==='learner'){
