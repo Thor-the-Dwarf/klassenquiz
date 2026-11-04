@@ -62,12 +62,46 @@ async function practiceOpen(id){
  else round=await request('roundLoad',{round:id});
  practiceCache();stopAudioPractice();$('#learner-menu-dialog')?.close();P.round=round;P.active=id;P.mode=round.modality||'visual';P.choosing=false;view='practice';practiceCache();drawSidebar();drawTabs();drawPracticeRound();
 }
-async function practiceStart(){
- if(!['visual','auditory'].includes(P.mode))return;practiceCache();await flush();if(queue.length)throw Error('Bitte erst die vorgemerkten Antworten speichern lassen.');if(!P.selection.size)return;if(P.selection.size>practiceTopicLimit){practiceLimitToast();return;}
- const mode=P.mode,requestId=storage.get('lp-round-create-'+boot.me.id+'-'+mode)||crypto.randomUUID();storage.set('lp-round-create-'+boot.me.id+'-'+mode,requestId);
- let round;try{round=await request('roundCreate',{topics:[...P.selection],modality:mode,difficulty:'tough',requestId});storage.set('lp-round-create-'+boot.me.id+'-'+mode,null)}catch(e){if(e.status&&e.status<500)storage.set('lp-round-create-'+boot.me.id+'-'+mode,null);throw e}
- practiceCache();stopAudioPractice();P.round=round;P.active=round.id;P.mode=mode;P.choosing=false;practiceCache();view='practice';drawSidebar();drawTabs();drawPracticeRound();
+let practiceLoading=false;
+const practicePaint=()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+async function withPracticeLoading(mode,load){
+ if(practiceLoading)return;
+ practiceLoading=true;
+ const previousFocus=document.activeElement,overlay=document.createElement('dialog');
+ overlay.id='practice-loading';overlay.className='practice-loading';overlay.setAttribute('aria-labelledby','practice-loading-title');overlay.setAttribute('aria-describedby','practice-loading-status');
+ overlay.innerHTML=`<div class="practice-loading-content"><h1 id="practice-loading-title">${mode==='auditory'?'Auditives':'Visuelles'} Lernen wird vorbereitet</h1><div class="practice-loading-track" role="progressbar" aria-label="Übungen werden geladen"><span></span></div><p id="practice-loading-status" role="status" aria-live="polite">Dein Lernstand wird gesichert …</p><button type="button" class="secondary" hidden>Zurück</button></div>`;
+ const status=overlay.querySelector('[role="status"]'),back=overlay.querySelector('button');
+ overlay.addEventListener('cancel',e=>{if(practiceLoading)e.preventDefault()});
+ overlay.addEventListener('close',()=>{overlay.remove();if(previousFocus?.isConnected)previousFocus.focus()});
+ back.addEventListener('click',()=>overlay.close());
+ document.body.append(overlay);overlay.showModal();
+ try{
+  await practicePaint();
+  await load(text=>{status.textContent=text});
+  status.textContent='Deine Übungen sind bereit.';
+  await practicePaint();
+  overlay.close();
+ }catch(e){
+  overlay.classList.add('failed');overlay.querySelector('[role="progressbar"]').hidden=true;
+  overlay.querySelector('h1').textContent='Die Übungen konnten nicht gestartet werden';
+  status.textContent=e.name==='AbortError'?'Das Laden dauert zu lange. Bitte versuche es erneut. Deine Auswahl bleibt erhalten.':e.message||'Bitte prüfe deine Verbindung und versuche es erneut.';
+  back.hidden=false;back.focus();
+ }finally{practiceLoading=false;}
 }
+async function practiceStart(){
+ if(practiceLoading||!['visual','auditory'].includes(P.mode)||!P.selection.size)return;
+ if(P.selection.size>practiceTopicLimit){practiceLimitToast();return;}
+ const mode=P.mode,topics=[...P.selection];
+ return withPracticeLoading(mode,async status=>{
+  practiceCache();await flush();if(queue.length)throw Error('Bitte erst die vorgemerkten Antworten speichern lassen.');
+  status('Deine Übungen werden geladen …');
+  const requestId=storage.get('lp-round-create-'+boot.me.id+'-'+mode)||crypto.randomUUID();storage.set('lp-round-create-'+boot.me.id+'-'+mode,requestId);
+  let round;try{round=await request('roundCreate',{topics,modality:mode,difficulty:'tough',requestId});storage.set('lp-round-create-'+boot.me.id+'-'+mode,null)}catch(e){if(e.status&&e.status<500)storage.set('lp-round-create-'+boot.me.id+'-'+mode,null);throw e}
+  status('Deine erste Aufgabe wird vorbereitet …');await practicePaint();
+  practiceCache();stopAudioPractice();P.round=round;P.active=round.id;P.mode=mode;P.choosing=false;practiceCache();view='practice';drawSidebar();drawTabs();await drawPracticeRound();
+ });
+}
+
 function practiceSave(){const r=P.round;if(!r)return;const draft=r.draft||{};enqueue('roundSave',{round:r.id,position:r.position,draft,revision:r.revision++,requestId:crypto.randomUUID()});practiceCache()}
 function practiceAck(item,result){if(!['roundSave','roundAnswer'].includes(item.action)||!boot?.me)return;const r=P.round?.id===item.data.round?P.round:storage.get(practiceKey(item.data.round));if(!r)return;if(item.action==='roundAnswer'){const t=r.tasks[item.data.index];t.submission={answer:result.answer,score:result.score};t.solution=result.solution;t.explanation=result.explanation;delete t.pending;r.completed=r.tasks.every(t=>t.submission)?Date.now():null}storage.set(practiceKey(r.id),r);if(item.action==='roundAnswer'&&P.round===r&&view==='practice')drawPracticeRound();if(P.knowledge&&item.action==='roundAnswer')refreshKnowledge().catch(showError)}
 function drawPracticeRound(){if(deferFeedback('practice',drawPracticeRound))return;
