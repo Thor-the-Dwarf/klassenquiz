@@ -1,5 +1,5 @@
 'use strict';
-const P={mode:null,knowledge:false,knowledgeData:null,knowledgeRevision:0,courses:[],topics:[],selection:new Set(),difficulty:'tough',choosing:false,round:null,active:null};
+const P={mode:null,knowledge:false,knowledgeData:null,knowledgeRevision:0,courses:[],topics:[],selection:new Set(),difficulty:'tough',choosing:false,round:null,active:null,activeModality:null,activeCompleted:null};
 const practiceTopicLimit=3;
 let practiceToastTimer;
 function practiceLimitToast(){
@@ -10,10 +10,12 @@ function practiceLimitToast(){
 }
 const practiceLevels=['easy','normal','tough'];
 const practiceKey=id=>'lp-round-'+boot.me.id+'-'+id;
-async function practiceInit(){const data=await request('practiceTopics',{modality:P.mode==='auditory'?'auditory':'visual'});P.topics=data.topics;P.courses=data.courses||[];P.active=P.courses.length?(data.active?.id||null):null;P.round=null;P.selection.clear();P.choosing=false;P.mode=null;P.knowledge=false;P.knowledgeData=null}
+async function practiceInit(){P.round=null;await flush();const data=await request('practiceTopics',{modality:P.mode==='auditory'?'auditory':'visual'});P.topics=data.topics;P.courses=data.courses||[];practiceSyncActive(data.active);P.selection.clear();P.choosing=false;P.mode=null;P.knowledge=false;P.knowledgeData=null}
 function practiceEffective(t){if(P.mode!=='auditory')return t.available?.length?'all':null;let i=Math.min(t.unlocked,2);while(i>=0&&!t.available.includes(practiceLevels[i]))i--;return i<0?null:practiceLevels[i]}
 function drawPracticeSidebar(){
  const side=$('#sidebar');const openFolders=new Set([...side.querySelectorAll('details[open]')].map(el=>el.querySelector(':scope > summary')?.textContent));side.closest('.shell')?.classList.toggle('practice-browsing',view==='practice'&&(P.choosing||P.mode==='infographics'));side.classList.toggle('practice-selecting',P.choosing);
+ const listScroll=side.querySelector('.practice-topic-list')?.scrollTop||0,focused=document.activeElement;
+ const focusSelector=side.contains(focused)?focused.dataset.practiceTopic?`[data-practice-topic="${CSS.escape(focused.dataset.practiceTopic)}"]`:focused.hasAttribute('data-practice-random')?'[data-practice-random]':null:null;
  const topics=P.topics;for(const id of P.selection){const t=topics.find(t=>t.id===id);if(!t||!practiceEffective(t)||[...P.selection].indexOf(id)>=practiceTopicLimit)P.selection.delete(id)}
  for(const [id,mode] of [['learner-practice','visual'],['learner-auditory','auditory'],['learner-infographics','infographics']]){const button=$('#'+id);button.className=P.mode===mode?'active':'secondary';button.setAttribute('aria-pressed',String(P.mode===mode));}
  if(!P.mode||(!P.choosing&&P.mode!=='infographics')){side.innerHTML='';return}
@@ -26,8 +28,10 @@ function drawPracticeSidebar(){
  for(const [folder,items] of Map.groupBy(courseEntries,t=>t.folder)){const hiddenLevel=/^Level[ _-]*\d/i.test(folder||'');html+=hiddenLevel?'<div class="folder">':`<details><summary>${esc(folder)}</summary><div class="folder">`;for(const t of items){if(t.presentation&&!P.choosing){html+=`<div class="treefile ${view==='presentation'&&selected===t.id?'active':''}"><span><button data-presentation="${esc(t.id)}" ${t.slides?'':'disabled'} aria-current="${view==='presentation'&&selected===t.id?'true':'false'}">${esc(t.title)}</button>${t.slides?'':'<small>Noch keine fertige Präsentation</small>'}${P.knowledge?knowledgeBar(t):''}</span></div>`;continue}if(t.presentation&&!t.available){html+=`<div class="treefile"><span>${esc(t.title)}<small>Noch keine Übungen</small></span></div>`;continue}const effective=practiceEffective(t);html+=`<${P.choosing?'label':'div'} class="treefile practice-topic">${P.choosing?`<input type="checkbox" data-practice-topic="${esc(t.id)}" aria-label="${esc(t.label)} auswählen" ${P.selection.has(t.id)?'checked':''} ${effective?'':'disabled'}>`:''}<span>${esc(t.label)}${P.choosing&&!effective?'<small>Keine passende Freigabe</small>':''}${P.knowledge?knowledgeBar(t):''}</span></${P.choosing?'label':'div'}>`}html+=hiddenLevel?'</div>':'</div></details>'}
  html+='</details>';
  }
- side.innerHTML=html+(P.choosing?`<div class="practice-start"><button data-practice-start ${P.selection.size?'':'disabled'}>Start</button>${practiceResumeButtons(P.mode)}</div>`:'');
+ side.innerHTML=P.choosing?`<div class="practice-topic-list" role="region" aria-label="Themenauswahl" tabindex="0">${html}</div><div class="practice-start" role="group" aria-label="Übung starten"><button data-practice-start ${P.selection.size?'':'disabled'}>Start</button>${practiceResumeButtons(P.mode)}</div>`:html;
  for(const folder of side.querySelectorAll('details'))folder.open=openFolders.has(folder.querySelector(':scope > summary')?.textContent);
+ const list=side.querySelector('.practice-topic-list');if(list)list.scrollTop=listScroll;
+ if(focusSelector)side.querySelector(focusSelector)?.focus({preventScroll:true});
 }
 function knowledgeBar(t){
  const k=P.knowledgeData?.topics.find(x=>x.id===t.id);if(!k)return '<small class="practice-level">Wissensstand wird geladen …</small>';
@@ -39,23 +43,52 @@ async function refreshKnowledge(){
  const data=await request('knowledge',{modality:P.mode==='auditory'?'auditory':'visual'});if(revision!==P.knowledgeRevision||auth!==session||!P.knowledge)return;
  P.knowledgeData=data;drawPracticeSidebar();
 }
-function practiceHistoryKey(){return 'lp-round-history-'+boot.me.id+'-'+cls.id}
+function practiceCurrentKey(){return 'lp-round-current-'+boot.me.id+'-'+cls.id}
+function practiceRemoveStored(key){try{localStorage.removeItem(key)}catch{storage.set(key,null)}}
+function practicePruneCache(currentId){
+ const historyKey='lp-round-history-'+boot.me.id+'-'+cls.id,ids=storage.get(historyKey)||[];
+ const previous=storage.get(practiceCurrentKey());
+ const queued=new Set(queue.filter(item=>item.data?.classId===cls.id).map(item=>item.data?.round));
+ for(const id of new Set([...ids,previous?.id].filter(Boolean))){
+  if(id!==currentId&&!queued.has(id))practiceRemoveStored(practiceKey(id));
+ }
+ practiceRemoveStored(historyKey);
+ if(currentId)storage.set(practiceCurrentKey(),{id:currentId});else practiceRemoveStored(practiceCurrentKey());
+}
+function practiceSyncActive(active){
+ P.active=active?.id||null;P.activeModality=active?.modality||null;P.activeCompleted=active?.completed||null;
+ if(P.round&&P.round.id!==P.active){
+  P.round=null;stopAudioPractice();originalPracticeUnmount();
+  if(view==='practice'){view='home';drawPracticeHome();}
+ }
+ practicePruneCache(P.active);
+}
+function practiceRetired(item){
+ const id=item.data?.round;if(!id)return;
+ practiceRemoveStored(practiceKey(id));practiceRemoveStored('lp-round-continue-'+id);
+ if(storage.get(practiceCurrentKey())?.id===id)practiceRemoveStored(practiceCurrentKey());
+ if(P.round?.id===id){P.round=null;stopAudioPractice();originalPracticeUnmount();if(view==='practice'){view='home';drawPracticeHome();}}
+ if(P.active===id){P.active=null;P.activeModality=null;P.activeCompleted=null;}
+ if(document.querySelector('#sidebar'))drawSidebar();
+ message(item.action==='roundAnswer'?'Dieser Lauf wurde inzwischen ersetzt. Eine noch nicht übertragene Antwort daraus konnte nicht mehr gespeichert werden.':'Dieser Lauf wurde inzwischen durch einen neuen Lauf ersetzt.');
+}
 function practiceResumeButtons(mode=null){
- const ids=storage.get(practiceHistoryKey())||[];
- const rounds=ids.map(id=>storage.get(practiceKey(id))).filter(r=>r&&!r.completed&&!r.tasks.every(t=>t.submission||t.pending)&&(!mode||(r.modality||'visual')===mode));
- let html=rounds.map(r=>`<button data-practice-resume="${esc(r.id)}" class="secondary">${P.round?.id===r.id?'Aktuellen Lauf fortsetzen':'Fortsetzen'} · ${r.modality==='auditory'?'auditiv':'visuell'}<small>${esc((boot.presentations||[]).find(t=>t.id===r.tasks[r.position]?.topic)?.title||'Übungsrunde')}${r.modality==='auditory'?` · Aufgabe ${r.position+1}/${r.tasks.length}`:''}</small></button>`).join('');
- if(P.active&&!rounds.some(r=>r.id===P.active)&&!ids.includes(P.active))html+=`<button data-practice-resume="${esc(P.active)}" class="secondary">Letzten Lauf fortsetzen</button>`;
- return html;
+ const id=P.active;if(!id)return '';
+ const r=P.round?.id===id?P.round:storage.get(practiceKey(id));
+ const modality=r?.modality||P.activeModality||'visual';
+ if(mode&&modality!==mode||r?.completed||P.activeCompleted)return '';
+ const title=r?(boot.presentations||[]).find(t=>t.id===r.tasks[r.position]?.topic)?.title:'';
+ return `<button data-practice-resume="${esc(id)}" class="secondary" aria-label="Aktuellen ${modality==='auditory'?'auditiven':'visuellen'} Lauf fortsetzen${title?': '+esc(title):''}">Fortsetzen</button>`;
 }
 let practiceNavigation=0;
 async function practiceSelect(mode='visual'){
  if(view==='discussion')return;
  const next=P.mode===mode?null:mode,revision=++practiceNavigation;
- if(next&&next!=='infographics'){await flush();const data=await request('practiceTopics',{modality:next});if(revision!==practiceNavigation)return;P.topics=data.topics;P.courses=data.courses||[];P.active=data.active?.id||null;P.knowledgeData=null;P.selection.clear();}
+ if(next&&next!=='infographics'){await flush();const data=await request('practiceTopics',{modality:next});if(revision!==practiceNavigation)return;P.topics=data.topics;P.courses=data.courses||[];practiceSyncActive(data.active);P.knowledgeData=null;P.selection.clear();}
  practiceCache();P.mode=next;P.choosing=next==='visual'||next==='auditory';drawSidebar();drawTabs();
 }
 function drawPracticeHome(){return drawHomeGraph()}
-function practiceCache(){if(!P.round)return;if(!storage.set(practiceKey(P.round.id),P.round))message('Der Zwischenstand konnte nicht lokal gespeichert werden. Bitte diese Seite geöffnet lassen.');const ids=storage.get(practiceHistoryKey())||[];storage.set(practiceHistoryKey(),[P.round.id,...ids.filter(id=>id!==P.round.id)])}
+function practiceCache(){if(!P.round||P.active&&P.active!==P.round.id)return;P.active=P.round.id;P.activeModality=P.round.modality||'visual';P.activeCompleted=P.round.completed||null;practicePruneCache(P.round.id);if(!storage.set(practiceKey(P.round.id),P.round))message('Der Zwischenstand konnte nicht lokal gespeichert werden. Bitte diese Seite geöffnet lassen.')}
 async function practiceOpen(id){
  practiceCache();await flush();let round;
  if(queue.length){round=storage.get(practiceKey(id));if(!round)throw Error('Bitte zuerst die Verbindung wiederherstellen.');}
@@ -103,7 +136,7 @@ async function practiceStart(){
 }
 
 function practiceSave(){const r=P.round;if(!r)return;const draft=r.draft||{};enqueue('roundSave',{round:r.id,position:r.position,draft,revision:r.revision++,requestId:crypto.randomUUID()});practiceCache()}
-function practiceAck(item,result){if(!['roundSave','roundAnswer'].includes(item.action)||!boot?.me)return;const r=P.round?.id===item.data.round?P.round:storage.get(practiceKey(item.data.round));if(!r)return;if(item.action==='roundAnswer'){const t=r.tasks[item.data.index];t.submission={answer:result.answer,score:result.score};t.solution=result.solution;t.explanation=result.explanation;t.submissionFeedback=result.submissionFeedback;delete t.pending;r.completed=r.tasks.every(t=>t.submission)?Date.now():null}storage.set(practiceKey(r.id),r);if(item.action==='roundAnswer'&&P.round===r&&view==='practice'){if(r.modality!=='auditory'&&originalPractice.current)originalPracticeSync();else drawPracticeRound().catch(showError);}if(P.knowledge&&item.action==='roundAnswer')refreshKnowledge().catch(showError)}
+function practiceAck(item,result){if(!['roundSave','roundAnswer'].includes(item.action)||!boot?.me)return;const r=P.round?.id===item.data.round?P.round:storage.get(practiceKey(item.data.round));if(!r)return;if(item.action==='roundAnswer'){const t=r.tasks[item.data.index];t.submission={answer:result.answer,score:result.score};t.solution=result.solution;t.explanation=result.explanation;t.submissionFeedback=result.submissionFeedback;delete t.pending;r.completed=r.tasks.every(t=>t.submission)?Date.now():null}if(P.active===r.id)storage.set(practiceKey(r.id),r);else practiceRemoveStored(practiceKey(r.id));if(item.action==='roundAnswer'&&P.round===r&&view==='practice'){if(r.modality!=='auditory'&&originalPractice.current)originalPracticeSync();else drawPracticeRound().catch(showError);}if(P.knowledge&&item.action==='roundAnswer')refreshKnowledge().catch(showError)}
 async function drawPracticeRound(){
  if(deferFeedback('practice',drawPracticeRound))return;
  if(typeof clearPracticeFeedback==='function')clearPracticeFeedback();

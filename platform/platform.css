@@ -202,3 +202,26 @@ dialog.practice-loading{position:fixed;inset:0;box-sizing:border-box;width:100vw
 dialog.practice-loading[open]{display:grid;place-items:center}.practice-loading::backdrop{background:#090d1b}.practice-loading-content{width:min(620px,100%);text-align:center}.practice-loading h1{font-size:clamp(25px,4vw,40px);line-height:1.2;margin:0 0 32px}.practice-loading p{color:#bac8da;min-height:3em;margin:22px 0}.practice-loading-track{height:12px;overflow:hidden;border-radius:999px;background:#1b2d43}.practice-loading-track span{display:block;width:35%;height:100%;border-radius:inherit;background:linear-gradient(90deg,#8c40e4,#3bd6f9);animation:practice-loading-slide 1.4s ease-in-out infinite}.practice-loading.failed h1{color:#ffb3b9}.practice-loading [hidden]{display:none!important}@keyframes practice-loading-slide{0%{transform:translateX(-110%)}100%{transform:translateX(390%)}}@media(prefers-reduced-motion:reduce){.practice-loading-track span{animation:none;width:100%;opacity:.65}}
 
 .practice-diagram{display:block;max-width:100%;width:auto;max-height:70vh;margin:18px auto;background:white;object-fit:contain}.pool-placement [aria-pressed="true"]{outline:2px solid #46d7ff}.pool-drop{padding:8px;border:1px dashed var(--line);border-radius:10px}.matrix-scroll input{min-width:80px;width:100%}
+
+/* Keep selection actions beside the independently scrolling topic list. */
+.learner-layout .shell:has(>#sidebar.practice-selecting){grid-template-columns:minmax(0,min(540px,46vw)) minmax(0,1fr)}
+.learner-layout .shell>#sidebar.practice-selecting{display:grid;grid-template-columns:minmax(0,1fr) clamp(112px,10vw,148px);gap:12px;position:sticky;top:0;z-index:5;align-self:start;min-width:0;min-height:0;height:calc(100dvh - var(--appbar-height,75px) - 64px);max-height:calc(100dvh - var(--appbar-height,75px) - 64px);padding:12px;overflow:hidden;background:#211a35}
+.practice-topic-list{min-width:0;min-height:0;overflow:auto;overscroll-behavior:contain;scrollbar-gutter:stable;padding:0 4px 8px 0;outline-offset:-2px}
+.practice-topic-list:focus-visible{outline:2px solid var(--cyan);border-radius:4px}
+.practice-topic-list .practice-tools{margin-top:0}
+.practice-topic-list .practice-tools button{width:100%;white-space:normal;overflow-wrap:anywhere}
+#sidebar.practice-selecting>.practice-start{display:flex;flex-direction:column;gap:12px;min-width:0;min-height:0;margin:0;padding:0 0 0 12px;border-left:1px solid var(--line);overflow-y:auto;overscroll-behavior:contain}
+#sidebar.practice-selecting>.practice-start>button{flex:none;min-height:48px;padding:12px 8px;font-size:14px;white-space:normal;overflow-wrap:anywhere}
+#sidebar.practice-selecting>.practice-start>[data-practice-start]{position:sticky;top:0;z-index:1;font-size:17px;box-shadow:0 5px 10px #11182766}
+#sidebar.practice-selecting>.practice-start small{font-size:12px}
+@media(max-width:1000px){.learner-layout.feedback-open .shell:has(>#sidebar.practice-selecting){grid-template-columns:minmax(0,1fr)}}
+@media(max-width:760px){
+ .learner-layout .shell:has(>#sidebar.practice-selecting){grid-template-columns:minmax(0,1fr)}
+ .learner-layout .shell>#sidebar.practice-selecting{grid-template-columns:minmax(0,1fr) 112px;gap:10px;height:min(55dvh,calc(100dvh - var(--appbar-height,75px) - 64px));max-height:min(55dvh,calc(100dvh - var(--appbar-height,75px) - 64px));padding:10px}
+ #sidebar.practice-selecting>.practice-start{padding-left:10px}
+}
+@media(max-width:360px){
+ .learner-layout .shell>#sidebar.practice-selecting{grid-template-columns:minmax(0,1fr) 100px;gap:8px;padding:8px}
+ #sidebar.practice-selecting>.practice-start{padding-left:8px}
+ #sidebar.practice-selecting>.practice-start>button{padding:10px 6px}
+}
