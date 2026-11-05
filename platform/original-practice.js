@@ -140,7 +140,7 @@ function originalPracticeDocument(material,config){
  const prelude='<script>('+originalPracticePrelude.toString()+')('+json+');<\/script>';
  // Only source-sheet identification and its finite counter are suppressed.
  // Task rendering, original layout/feedback CSS and original footer are intact.
- const overrides='<style>.app>.top,#progress{display:none!important}.app{grid-template-rows:minmax(0,1fr) auto!important}</style>';
+ const overrides='<style>.app>.top,#progress,.finale-slide{display:none!important}.app{grid-template-rows:minmax(0,1fr) auto!important}</style>';
  const bridge='<script>('+originalPracticeBridge.toString()+')();<\/script>';
  let html=material.html;
  html=html.replace(/<head(?:\s[^>]*)?>/i,match=>match+prelude);
