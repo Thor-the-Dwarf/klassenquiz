@@ -60,7 +60,7 @@ async function practiceOpen(id){
  practiceCache();await flush();let round;
  if(queue.length){round=storage.get(practiceKey(id));if(!round)throw Error('Bitte zuerst die Verbindung wiederherstellen.');}
  else round=await request('roundLoad',{round:id});
- practiceCache();stopAudioPractice();$('#learner-menu-dialog')?.close();P.round=round;P.active=id;P.mode=round.modality||'visual';P.choosing=false;view='practice';practiceCache();drawSidebar();drawTabs();drawPracticeRound();
+ practiceCache();stopAudioPractice();$('#learner-menu-dialog')?.close();P.round=round;P.active=id;P.mode=round.modality||'visual';P.choosing=false;view='practice';practiceCache();drawSidebar();drawTabs();await drawPracticeRound();
 }
 let practiceLoading=false;
 const practicePaint=()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
@@ -103,22 +103,34 @@ async function practiceStart(){
 }
 
 function practiceSave(){const r=P.round;if(!r)return;const draft=r.draft||{};enqueue('roundSave',{round:r.id,position:r.position,draft,revision:r.revision++,requestId:crypto.randomUUID()});practiceCache()}
-function practiceAck(item,result){if(!['roundSave','roundAnswer'].includes(item.action)||!boot?.me)return;const r=P.round?.id===item.data.round?P.round:storage.get(practiceKey(item.data.round));if(!r)return;if(item.action==='roundAnswer'){const t=r.tasks[item.data.index];t.submission={answer:result.answer,score:result.score};t.solution=result.solution;t.explanation=result.explanation;t.submissionFeedback=result.submissionFeedback;delete t.pending;r.completed=r.tasks.every(t=>t.submission)?Date.now():null}storage.set(practiceKey(r.id),r);if(item.action==='roundAnswer'&&P.round===r&&view==='practice')drawPracticeRound();if(P.knowledge&&item.action==='roundAnswer')refreshKnowledge().catch(showError)}
-function drawPracticeRound(){if(deferFeedback('practice',drawPracticeRound))return;
+function practiceAck(item,result){if(!['roundSave','roundAnswer'].includes(item.action)||!boot?.me)return;const r=P.round?.id===item.data.round?P.round:storage.get(practiceKey(item.data.round));if(!r)return;if(item.action==='roundAnswer'){const t=r.tasks[item.data.index];t.submission={answer:result.answer,score:result.score};t.solution=result.solution;t.explanation=result.explanation;t.submissionFeedback=result.submissionFeedback;delete t.pending;r.completed=r.tasks.every(t=>t.submission)?Date.now():null}storage.set(practiceKey(r.id),r);if(item.action==='roundAnswer'&&P.round===r&&view==='practice'){if(r.modality!=='auditory'&&originalPractice.current)originalPracticeSync();else drawPracticeRound().catch(showError);}if(P.knowledge&&item.action==='roundAnswer')refreshKnowledge().catch(showError)}
+async function drawPracticeRound(){
+ if(deferFeedback('practice',drawPracticeRound))return;
  if(typeof clearPracticeFeedback==='function')clearPracticeFeedback();
- const r=P.round,el=$('#content');if(r?.modality==='auditory')return drawAudioPractice();if(!P.courses.length){el.innerHTML='<p>Dieser Kurs ist derzeit nicht freigegeben.</p>';return}if(!r){el.innerHTML='<p>Wähle links deine Übungen aus.</p>';return}
- const t=r.tasks[r.position],draft=r.draft[t.key]||[],answer=richAnswer(t,t.submission?.answer||t.pending||draft),locked=!!(t.submission||t.pending),done=r.tasks.filter(t=>t.submission).length;
- let body=`<div class="practice-heading"><span>${esc((boot.presentations||[]).find(x=>x.id===t.topic)?.title||t.topic)}</span></div><h2>${esc(t.title)}</h2>${t.prompt?`<p>${esc(t.prompt)}</p>`:''}`;
- body+=practiceStimulus(t);
- const header=body;body='';
- const rich=richTask(t,answer,locked,'practice');if(rich!==null)body+=rich;else if(t.kind==='choice')body+=`${t.multi?'<p>Mehrere Antworten auswählen.</p>':''}<div class="answers">${t.choices.map(c=>`<button data-practice-choice="${esc(c.id)}" aria-pressed="${answer.includes(c.id)}" class="answer ${answer.includes(c.id)?'selected':''}" ${locked?'disabled':''}>${esc(c.label)}</button>`).join('')}</div>`;
- else{if(t.kind==='cloze')body+=`<p>${t.parts.map(p=>p===null?' […] ':esc(p)).join('')}</p>`;body+=t.fields.map((field,i)=>`<label class="field">${esc(field)}<select data-practice-field="${i}" ${locked?'disabled':''}><option value="">Bitte auswählen</option>${t.choices.map(c=>`<option value="${esc(c.id)}" ${answer[i]===c.id?'selected':''}>${esc(c.label)}</option>`).join('')}</select></label>`).join('')}
- body=header+(t.submission?`<div class="practice-evaluation"><div class="practice-task">${body}</div>${practiceFeedbackHtml(t)}</div>`:body);
- if(t.pending&&!t.submission)body+='<p role="status">Antwort lokal vorgemerkt – wird übertragen.</p>';
- const next=r.position<r.tasks.length-1;
- const complete=practiceAnswerComplete(t,answer);
- el.innerHTML=`<section class="practice-round">${body}<footer class="practice-footer"><div class="practice-navigation"><button data-practice-prev class="practice-arrow" aria-label="Zur vorherigen Aufgabe" title="Pfeil nach oben" ${r.position?'':'disabled'}>↑</button><button data-practice-answer class="practice-evaluate" title="Enter" ${locked||!complete?'disabled':''}>${locked?'Auswertung':'Auswerten'}</button><button data-practice-next class="practice-arrow" aria-label="Zur nächsten Aufgabe" title="Pfeil nach unten" ${locked&&next?'':'disabled'}>↓</button></div></footer>${done===r.tasks.length?'<p class="saved">Übungsrunde abgeschlossen.</p><button data-practice-new>Neue Runde</button>':''}</section>`;
- if(t.submission)arrangePracticeFeedback(t);
+ const r=P.round,el=$('#content');
+ if(r?.modality==='auditory'){originalPracticeUnmount();return drawAudioPractice();}
+ if(!P.courses.length){originalPracticeUnmount();el.innerHTML='<p>Dieser Kurs ist derzeit nicht freigegeben.</p>';return;}
+ if(!r){originalPracticeUnmount();el.innerHTML='<p>Wähle links deine Übungen aus.</p>';return;}
+ return drawOriginalPracticeRound();
+}
+async function practiceOriginalNavigate(delta){
+ const r=P.round;if(!r||r.modality==='auditory'||![-1,1].includes(delta))return;
+ if(feedbackLocked()){flashFeedback();return;}
+ const t=r.tasks[r.position];
+ if(delta<0&&!r.position||delta>0&&!t.submission&&!t.pending)return;
+ if(delta>0&&r.position===r.tasks.length-1){
+  // The random pool is continuous for learners; completing one stored round
+  // creates the next round over the same selected topics without a task count.
+  if(!r.continuation){originalPracticePost('navigation-failed');return;}
+  return withPracticeLoading('visual',async status=>{
+   practiceSave();await flush();if(queue.length)throw Error('Bitte erst die vorgemerkten Antworten speichern lassen.');
+   status('Die nächste Aufgabe wird vorbereitet …');
+   const requestId=storage.get('lp-round-continue-'+r.id)||crypto.randomUUID();storage.set('lp-round-continue-'+r.id,requestId);
+   const next=await request('roundCreate',{...r.continuation,coreId:r.continuation.coreId||undefined,modality:'visual',difficulty:'tough',requestId});
+   storage.set('lp-round-continue-'+r.id,null);P.round=next;P.active=next.id;practiceCache();await drawPracticeRound();
+  }).finally(()=>originalPracticePost('navigation-failed'));
+ }
+ r.position+=delta;practiceSave();await drawPracticeRound();
 }
 document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const d=b.dataset;if(!Object.keys(d).some(k=>k.startsWith('practice')))return;guarded(async()=>{
  if('practiceKnowledge'in d){P.knowledge=!P.knowledge;b.className=P.knowledge?'active':'secondary';b.setAttribute('aria-pressed',String(P.knowledge));drawSidebar();if(P.knowledge)await refreshKnowledge();return}
