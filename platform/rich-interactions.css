@@ -1,0 +1,45 @@
+/* Placement surfaces follow the original worksheet layouts. */
+.rich-placement{min-width:0;width:100%;max-width:100%;box-sizing:border-box}
+.rich-placement *{box-sizing:border-box}
+.rich-placement-help,.rich-placement-status{font-size:14px;line-height:1.5;color:var(--muted,#bac8da)}
+.rich-placement-bank{display:flex;flex-wrap:wrap;align-content:flex-start;gap:10px;min-height:68px;padding:12px;border:1px dashed #8194a1;border-radius:6px;margin-bottom:18px}
+.rich-placement-bank>h3{width:100%;flex-shrink:0;font-size:14px;line-height:1.5;font-weight:500;color:var(--muted,#bac8da);margin:0 0 4px}
+.rich-move-card{position:relative;display:block;text-align:left;white-space:normal;overflow-wrap:anywhere;background:#eef4f7;color:#132730;border:2px solid transparent;border-radius:6px;padding:12px;font:inherit;font-size:16px;line-height:1.4;cursor:grab;touch-action:none;user-select:none;min-width:0}
+.rich-move-card[aria-pressed="true"]{border-color:#1672bd;box-shadow:0 0 0 2px #b2e3ff}
+.rich-move-card:disabled{opacity:1;cursor:default}
+.rich-placement [data-rich-target]:focus-visible,.rich-move-card:focus-visible{outline:3px solid #46d7ff;outline-offset:3px}
+.rich-drop-over{outline:3px solid #fff;outline-offset:-4px}
+.rich-field-anchor{position:absolute;width:2px;height:2px;bottom:6px;right:6px;pointer-events:none}
+.rich-drag-ghost{position:fixed;z-index:99999;pointer-events:none;max-width:320px;padding:12px;background:#eef4f7;color:#132730;border:2px solid #35d6f4;border-radius:6px;box-shadow:0 8px 22px #0009;font-size:16px;line-height:1.4;overflow-wrap:anywhere}
+.rich-truth-work{display:flex;flex-direction:column;height:clamp(480px,66dvh,760px);min-height:0}
+.rich-truth-work>.rich-placement-bank{flex:0 1 auto;flex-direction:column;flex-wrap:nowrap;max-height:55%;min-height:60px;overflow:auto}
+.rich-truth-card{width:100%;flex-shrink:0}
+.rich-truth-zones{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;flex:1;min-height:200px}
+.rich-truth-zone{display:flex;flex-direction:column;gap:10px;min-width:0;min-height:0;overflow:auto;padding:14px;border:2px solid;border-radius:8px}
+.rich-truth-zone h3{margin:0 0 8px;font-size:23px;line-height:1.2;letter-spacing:0}
+.rich-truth-false{background:#4a202a;border-color:#e37886}
+.rich-truth-true{background:#153f33;border-color:#67c99b}
+.rich-placement-alternative{margin-top:18px;font-size:15px}
+.rich-placement-alternative>summary{cursor:pointer;padding:8px 0;color:var(--muted,#bac8da)}
+.rich-placement-alternative label{display:flex;flex-direction:column;gap:6px;margin:12px 0;min-width:0}
+.rich-placement-alternative fieldset{min-width:0;margin:12px 0;padding:12px;border:1px solid var(--line,#34506b);border-radius:6px}
+.rich-placement-alternative select{max-width:100%;width:100%}
+.rich-risk-card{max-width:250px;display:flex;flex-direction:column;gap:5px;font-size:14px;padding:9px}
+.rich-risk-detail{font-size:13px}
+.rich-risk-work>.rich-placement-bank{height:clamp(160px,22dvh,240px);overflow:auto}
+.rich-risk-scroll{width:100%;max-width:100%;min-width:0;overflow:auto;overscroll-behavior:contain}
+.rich-risk-plot{display:grid;grid-template-columns:34px minmax(700px,1fr);min-width:734px}
+.rich-risk-grid{display:grid;grid-template-columns:145px repeat(5,minmax(100px,1fr));gap:3px;min-width:700px}
+.rich-risk-label{font-size:14px;font-weight:700;display:flex;align-items:center;padding:8px;overflow-wrap:anywhere}
+.rich-risk-cell{height:96px;overflow:auto;padding:5px;border:1px solid #b1c9bd;display:flex;flex-direction:column;gap:5px}
+.rich-risk-cell .rich-risk-card{width:100%;max-width:none;font-size:12px;padding:6px;flex-shrink:0}
+.rich-risk-cell .rich-risk-detail{display:none}
+.rich-risk-green{background:#81b84a}.rich-risk-yellow{background:#ffcf27}.rich-risk-orange{background:#fa841e}.rich-risk-red{background:#ed3740}
+.rich-risk-axis-x,.rich-risk-axis-y{font-size:15px;font-weight:750}
+.rich-risk-axis-x{position:sticky;left:0;text-align:center;width:100%;padding:10px 0}
+.rich-risk-axis-y{display:flex;align-items:center;justify-content:center;padding-top:40px;min-width:0}
+.rich-risk-axis-y span{display:block;white-space:nowrap;transform:rotate(-90deg)}
+.rich-decision-matrix [data-matrix-hint]{display:block;color:#ffb3b9;font-size:13px;font-weight:500;white-space:normal;line-height:1.4;margin-top:8px}
+.rich-decision-matrix [data-matrix-hint][hidden]{display:none}
+.rich-decision-matrix [aria-invalid="true"]{outline:2px solid #ed8794;outline-offset:1px}
+@media(max-width:700px){.rich-truth-zones{gap:8px}.rich-truth-zone{padding:8px}.rich-truth-zone h3{font-size:20px}.rich-move-card{font-size:14px;padding:9px}.rich-risk-card{max-width:100%}.rich-placement-help{font-size:13px}}

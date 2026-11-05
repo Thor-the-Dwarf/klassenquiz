@@ -1,0 +1,31 @@
+.practice-evaluation{position:relative;display:grid;grid-template-columns:minmax(0,1.2fr) minmax(300px,.78fr);gap:34px;align-items:start;margin-top:18px}
+.practice-task,.practice-feedback-list{position:relative;min-width:0;z-index:1}
+.practice-feedback-list{display:flex;flex-direction:column;gap:14px}
+.practice-feedback-bubble,.practice-feedback-fallback{border:1.5px solid rgba(180,205,239,.24);border-radius:18px;background:rgba(23,33,52,.92);padding:16px 18px;min-height:82px;overflow-wrap:anywhere}
+.practice-feedback-bubble.correct,.practice-feedback-fallback.correct{background:rgba(36,99,64,.62);border-color:rgba(88,218,133,.68)}
+.practice-feedback-bubble.incorrect,.practice-feedback-fallback.incorrect{background:rgba(105,38,48,.62);border-color:rgba(255,107,115,.7)}
+.practice-feedback-bubble.missing,.practice-feedback-fallback.missing{background:rgba(108,79,23,.62);border-color:rgba(243,198,79,.72)}
+.practice-feedback-title{display:flex;gap:14px;justify-content:space-between;align-items:baseline;font-size:clamp(18px,1.2vw,23px);font-weight:850}
+.practice-feedback-title>span{min-width:0}.practice-feedback-title>strong{flex-shrink:0;letter-spacing:.08em;font-size:.8em;white-space:nowrap}
+.practice-feedback-bubble p{margin:9px 0 0;font-size:clamp(15px,1vw,20px);line-height:1.4;color:rgba(255,255,255,.84)}
+.practice-feedback-context{display:none;color:var(--muted);font-size:14px;font-weight:700;margin-bottom:8px}.practice-feedback-bubble[data-feedback-context="always"] .practice-feedback-context{display:block}
+.practice-feedback-lines{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible;z-index:0}
+.practice-feedback-lines path{fill:none;stroke:#8eabc9;stroke-width:2}.practice-feedback-lines .correct{stroke:#58da85}.practice-feedback-lines .incorrect{stroke:#ff6b73}.practice-feedback-lines .missing{stroke:#f3c64f}
+.practice-feedback-fallback{grid-column:1/-1}
+@media(max-width:1000px){.practice-evaluation{grid-template-columns:minmax(0,1fr);gap:24px}.practice-feedback-lines{display:none}.practice-feedback-context{display:block;color:var(--muted);font-size:14px;font-weight:700;margin-bottom:8px}.practice-feedback-title{font-size:18px}}
+
+/* Feedback is content, not the application's folder-tree sidebar. */
+.practice-round .practice-feedback-list,.practice-round .practice-feedback-fallback{position:static;max-height:none;height:auto;overflow:visible;border-right:0;padding:0}
+.practice-feedback-list>.practice-feedback-bubble{flex:0 0 auto}
+.practice-round .practice-feedback-fallback{padding:16px 18px;border-width:1.5px;border-style:solid}
+.practice-round>.field,.practice-task>.field{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(180px,.8fr);align-items:center;gap:18px;min-height:72px;border:1.5px solid rgba(118,157,205,.52);background:rgba(24,40,64,.82);border-radius:20px;padding:14px 18px;margin:0 0 14px;font-size:clamp(18px,1.4vw,24px);font-weight:700}
+.practice-round>.field select,.practice-task>.field select{margin:0;width:100%;min-width:0;opacity:1}
+@media(max-width:700px){.practice-round>.field,.practice-task>.field{grid-template-columns:minmax(0,1fr);gap:12px;padding:14px;font-size:18px}}
+.practice-feedback-reasons{list-style:none;padding:0;margin:14px 0 0;display:flex;flex-direction:column;gap:12px}
+.practice-feedback-reasons>li{border-top:1px solid #b4cdef3d;padding-top:10px;min-width:0}
+.practice-feedback-reasons>li>strong{display:block;font-size:12px;letter-spacing:.06em;margin-bottom:5px}
+.practice-feedback-reasons>li.correct>strong{color:#79e6a1}.practice-feedback-reasons>li.incorrect>strong{color:#ffa6ad}.practice-feedback-reasons>li.missing>strong{color:#f6d675}.practice-feedback-reasons>li.neutral>strong{color:var(--muted)}
+.practice-feedback-reasons>li>span{font-weight:700}.practice-feedback-reasons>li>p{font-size:15px}
+/* Evaluated answers stay readable while editing is locked. */
+.practice-round .answer:disabled{opacity:1;color:var(--text);cursor:default}
+.practice-round select:disabled,.practice-round input:disabled{opacity:1}
